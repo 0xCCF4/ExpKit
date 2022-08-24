@@ -1,10 +1,10 @@
 from pathlib import Path
 from typing import Dict, Type, List
 
-from src.base.payload import PayloadType, Payload
-from src.base.platform import Platform, PlatformDict
+from expkit.base.payload import PayloadType, Payload
+from expkit.base.platform import Platform, PlatformDict
 
-from src.base.utils import check_dict_types, error_on_fail, error_on_fail_any, FinishedDeserialization, check_type
+from expkit.base.utils import check_dict_types, error_on_fail, error_on_fail_any, FinishedDeserialization, check_type
 
 
 class StageTaskTemplate(FinishedDeserialization):
@@ -26,8 +26,7 @@ class StageTaskTemplate(FinishedDeserialization):
 
     def execute(self, parameters: dict) -> bool:
         error_on_fail(check_dict_types(self.parameters, parameters), "StageTaskTemplate parameters")
-
-        pass # TODO
+        return True
 
 
 class StageTemplate(FinishedDeserialization):

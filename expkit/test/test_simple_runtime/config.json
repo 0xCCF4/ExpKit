@@ -1,0 +1,90 @@
+{
+  "__comment1": "Default parameters",
+  "config": {
+    "__comment1": "net specific parameters",
+    "NET_TARGET_FRAMEWORK": "net35",
+    
+    "__comment2": "program parameters",
+    "P_TEST_INT": "11",
+    
+    "__comment3": "general parameters",
+    "BUILD_TYPE": "Debug"
+  },
+  
+  "__comment2": "artifact definitions",
+  "artifacts": {
+
+    "base": {
+      "stages": [
+        {
+          "name": "LOAD_FOLDER",
+          "config": {
+            "LOAD_FOLDER_PATH": "./template",
+            "LOAD_TARGET_FORMAT": "CSHARP_PROJECT"
+          }
+        }
+      ]
+    },
+
+    "test_66_base64": {
+      "__comment1": "artifact specific configuration",
+      "config": {
+        "P_TEST_INT": "66"
+      },
+
+      "dependencies": [
+        "base"
+      ],
+      
+      "stages": [
+        { "name": "LOAD_DEPENDENCY", "config": "base" },
+        { "name": "TEMPLATE_ENGINE_CSHARP" },
+        {
+          "name": "OBFUSCATE_CSHARP",
+          "config": {
+            "__comment1": "obfuscation specific configuration",
+            "OBF_STRING_ENCODING": "base64"
+          }
+        },
+        { "name": "COMPILE_CSHARP" },
+        {
+          "name": "ARTIFACT_EXPORT",
+          "config": {
+            "EXPORT_FOLDER_PATH": "./build66.exe"
+          }
+        }
+      ]
+    },
+    
+    "test_33": {
+      "__comment1": "artifact specific configuration",
+      "config": {
+        "P_TEST_INT": "33"
+      },
+
+      "dependencies": [
+        "base"
+      ],
+      
+      "stages": [
+        { "name": "LOAD_DEPENDENCY", "config": "base" },
+        { "name": "TEMPLATE_ENGINE_CSHARP" },
+        {
+          "name": "OBFUSCATE_CSHARP",
+          "config": {
+            "__comment1": "obfuscation specific configuration",
+            "OBF_STRING_ENCODING": "aes256"
+          }
+        },
+        { "name": "COMPILE_CSHARP" },
+        {
+          "name": "ARTIFACT_EXPORT",
+          "config": {
+            "EXPORT_FOLDER_PATH": "./build33.exe"
+          }
+        }
+      ]
+    }
+    
+  }
+}

@@ -1,6 +1,6 @@
 from enum import Enum
 
-from src.base.platform import Platform
+from expkit.base.platform import Platform
 
 
 class PayloadType(Enum):
@@ -20,12 +20,7 @@ class PayloadType(Enum):
 
     # Source code and other files
     POWERSHELL_SCRIPT = 8
-    CSHARP_SOURCE = 9
-    PYTHON_SOURCE = 10
-    C_SOURCE = 11
-    CPP_SOURCE = 12
-    H_SOURCE = 13
-    ASM_SOURCE = 14
+    CSHARP_PROJECT = 9
 
     @staticmethod
     def get_type_from_name(name: str) -> "PayloadType":

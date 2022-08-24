@@ -1,0 +1,11 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>{{NET_TARGET_FRAMEWORK}}</TargetFramework>
+        <Nullable>enable</Nullable> -->
+        <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+        <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
+        <OutputType>Exe</OutputType>
+    </PropertyGroup>
+
+</Project>
