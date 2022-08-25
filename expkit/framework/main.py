@@ -7,14 +7,15 @@ from pathlib import Path
 from typing import Optional, List
 
 from expkit.base.logger import get_logger, init_global_logging
-from expkit.framework.database import TaskDatabase, discover_databases
+from expkit.framework.database import TaskDatabase, auto_discover_databases
 
-logger = None
+LOGGER = None
 
 
 def main(config: dict, artifacts: Optional[List[str]], output_directory: Optional[Path]):
     expkit_dir = Path(__file__).parent.parent
-    discover_databases(expkit_dir)
+    LOGGER.info("Gathering all exploit chain modules")
+    auto_discover_databases(expkit_dir)  # must only be called once
 
     db = TaskDatabase.get_instance()
 
@@ -22,7 +23,6 @@ def main(config: dict, artifacts: Optional[List[str]], output_directory: Optiona
         print(k, v)
 
     pass
-
 
 
 if __name__ == "__main__":
@@ -54,58 +54,58 @@ if __name__ == "__main__":
         log_file = Path(log_file)
 
     init_global_logging(log_file, file_logging_level, console_logging_level)
-    logger = get_logger("main")
-    logger.info("Hello world")
+    LOGGER = get_logger("main")
+    LOGGER.info("Hello world")
 
     if args.verbose:
-        logger.info("Printing verbose output")
+        LOGGER.info("Printing verbose output")
     if args.debug:
-        logger.info("Printing debug output")
+        LOGGER.info("Printing debug output")
 
-    logger.debug("Checking arguments")
+    LOGGER.debug("Checking arguments")
 
     config_file = None
     if args.file is not None:
-        logger.debug(f"Checking if file {args.file} exists")
+        LOGGER.debug(f"Checking if file {args.file} exists")
         config_file = Path(args.file)
         if not config_file.exists():
-            logger.critical(f"Config file {config_file} does not exist")
+            LOGGER.critical(f"Config file {config_file} does not exist")
         if not config_file.is_file():
-            logger.critical(f"Config file {config_file} is not a file")
-        logger.debug("Config file exists")
+            LOGGER.critical(f"Config file {config_file} is not a file")
+        LOGGER.debug("Config file exists")
 
     artifacts = None
     if args.command is not None:
         artifacts = args.command.split(",")
-        logger.debug(f"Passed list of artifacts to build {artifacts}")
+        LOGGER.debug(f"Passed list of artifacts to build {artifacts}")
 
     output_dir = None
     if args.output is not None:
         output_dir = Path(args.output)
         if not output_dir.exists():
-            logger.critical(f"Output directory {output_dir} does not exist")
+            LOGGER.critical(f"Output directory {output_dir} does not exist")
         if not output_dir.is_dir():
-            logger.critical(f"Output directory {output_dir} is not a directory")
-        logger.debug("Output directory exists")
+            LOGGER.critical(f"Output directory {output_dir} is not a directory")
+        LOGGER.debug("Output directory exists")
 
     if config_file is None:
-        logger.debug("No config file specified. Using default file_path")
+        LOGGER.debug("No config file specified. Using default file_path")
         config_file = Path("config.json")
 
         if not config_file.exists():
-            logger.critical(f"Config file {config_file} does not exist")
+            LOGGER.critical(f"Config file {config_file} does not exist")
         if not config_file.is_file():
-            logger.critical(f"Config file {config_file} is not a file")
+            LOGGER.critical(f"Config file {config_file} is not a file")
 
     try:
         with open(config_file, "r") as f:
             config = json.load(f)
     except JSONDecodeError as e:
-        logger.critical(f"Error parsing config file {config_file}: {e}")
+        LOGGER.critical(f"Error parsing config file {config_file}: {e}")
     except Exception as e:
-        logger.critical(f"Failed to load config file {config_file}")
+        LOGGER.critical(f"Failed to load config file {config_file}")
         raise e
 
-    logger.debug("Starting main")
+    LOGGER.debug("Starting main")
     main(config, artifacts, output_dir)
-    logger.debug("Exiting...")
+    LOGGER.debug("Exiting...")

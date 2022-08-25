@@ -1,15 +1,54 @@
 import os
+import threading
 from pathlib import Path
-from typing import Dict, Optional, Type
+from typing import Dict, Optional, Type, TypeVar, Generic, List, Callable
 from expkit.base.logger import get_logger
-from expkit.base.stage import StageTaskTemplate
+from expkit.base.stage import StageTaskTemplate, StageTemplate, StageTemplateGroup
 from expkit.base.utils import recursive_foreach_file
 from importlib import import_module
 
 LOGGER = get_logger(__name__)
 
+T = TypeVar("T")
+class RegisterAnnotationHelper(Generic[T]):
+    def __init__(self):
+        self._registered: List[T] = []
+        self._lock = threading.Lock()
+        self.finished = False
 
-def discover_databases(directory: Path, module_prefix: str = "expkit."):
+    def finalize(self, func: Callable[[T], None]):
+        with self._lock:
+            if self.finished and len(self._registered) > 0:
+                raise RuntimeError("RegisterAnnotationHelper is finalized")
+            for task in self._registered:
+                func(task)
+            self.finished = True
+
+    def register(self, obj: T):
+        with self._lock:
+            if self.finished:
+                LOGGER.error(f"Unable to register {obj} as the database initialization is completed")
+            else:
+                self._registered.append(obj)
+
+__helper_tasks: RegisterAnnotationHelper[StageTaskTemplate] = RegisterAnnotationHelper()
+__helper_stages: RegisterAnnotationHelper[StageTemplate] = RegisterAnnotationHelper()
+__helper_stage_groups: RegisterAnnotationHelper[StageTemplateGroup] = RegisterAnnotationHelper()
+
+
+def register_task(task: Type[StageTaskTemplate], *nargs, **kwargs):
+    __helper_tasks.register(task(*nargs, **kwargs))
+
+
+def register_stage(stage: Type[StageTemplate], *nargs, **kwargs):
+    __helper_stages.register(stage(*nargs, **kwargs))
+
+
+def register_stage_group(stage_group: Type[StageTemplateGroup], *nargs, **kwargs):
+    __helper_stage_groups.register(stage_group(*nargs, **kwargs))
+
+
+def auto_discover_databases(directory: Path, module_prefix: str = "expkit."):
     LOGGER.debug(f"Discovering database entries in {directory}")
 
     files = []
@@ -27,9 +66,9 @@ def discover_databases(directory: Path, module_prefix: str = "expkit."):
                 LOGGER.error(e)
                 continue
 
-
-def register_task(task: Type[StageTaskTemplate], *nargs, **kwargs):
-    TaskDatabase.get_instance().add_task(task(*nargs, **kwargs))
+    __helper_tasks.finalize(TaskDatabase.get_instance().add_task)
+    __helper_stages.finalize(StageDatabase.get_instance().add_stage)
+    __helper_stage_groups.finalize(StageGroupDatabase.get_instance().add_group)
 
 
 class TaskDatabase():
@@ -56,4 +95,46 @@ class TaskDatabase():
 
 
 class StageDatabase():
-    pass
+    def __init__(self):
+        self.stages: Dict[str, StageTemplate] = {}
+        LOGGER.debug("Created stage database")
+
+    def add_stage(self, stage: StageTemplate):
+        assert stage.name == stage.name.lower(), "Only lower case stage names are allowed"
+        if stage.name in self.stages:
+            raise ValueError(f"Stage with name {stage.name} already exists in the database")
+        LOGGER.debug(f" - registered stage {stage.name}")
+        self.stages[stage.name.lower()] = stage
+
+    def get_stage(self, name: str) -> Optional[StageTemplate]:
+        return self.stages.get(name, None)
+
+    __instance: 'StageDatabase' = None
+    @staticmethod
+    def get_instance() -> 'StageDatabase':
+        if StageDatabase.__instance is None:
+            StageDatabase.__instance = StageDatabase()
+        return StageDatabase.__instance
+
+
+class StageGroupDatabase():
+    def __init__(self):
+        self.groups: Dict[str, StageTemplateGroup] = {}
+        LOGGER.debug("Created stage group database")
+
+    def add_group(self, group: StageTemplateGroup):
+        assert group.name == group.name.lower(), "Only lower case stage group names are allowed"
+        if group.name in self.groups:
+            raise ValueError(f"Stage group with name {group.name} already exists in the database")
+        LOGGER.debug(f" - registered stage group {group.name}")
+        self.groups[group.name.lower()] = group
+
+    def get_group(self, name: str) -> Optional[StageTemplateGroup]:
+        return self.groups.get(name, None)
+
+    __instance: 'StageGroupDatabase' = None
+    @staticmethod
+    def get_instance() -> 'StageGroupDatabase':
+        if StageGroupDatabase.__instance is None:
+            StageGroupDatabase.__instance = StageGroupDatabase()
+        return StageGroupDatabase.__instance
