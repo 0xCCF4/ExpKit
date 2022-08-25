@@ -7,17 +7,22 @@ from pathlib import Path
 from typing import Optional, List
 
 from expkit.base.logger import get_logger, init_global_logging
-from expkit.framework.database import TaskDatabase
+from expkit.framework.database import TaskDatabase, discover_databases
 
 logger = None
 
 
 def main(config: dict, artifacts: Optional[List[str]], output_directory: Optional[Path]):
-    import expkit.tasks.obfuscation.csharp.string_transform_template
+    expkit_dir = Path(__file__).parent.parent
+    discover_databases(expkit_dir)
+
     db = TaskDatabase.get_instance()
-    for k, v in db.tasks:
+
+    for k, v in db.tasks.items():
         print(k, v)
+
     pass
+
 
 
 if __name__ == "__main__":
@@ -101,6 +106,6 @@ if __name__ == "__main__":
         logger.critical(f"Failed to load config file {config_file}")
         raise e
 
-    logger.debug("Entering main function")
+    logger.debug("Starting main")
     main(config, artifacts, output_dir)
-    logger.debug("Exiting main function")
+    logger.debug("Exiting...")
