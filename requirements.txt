@@ -1,1 +1,5 @@
+# Runtime dependencies
+networkx==2.8.6
+
+# Test dependencies
 pytest>=7.1.2

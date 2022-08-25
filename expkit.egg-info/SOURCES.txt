@@ -1,7 +1,0 @@
-setup.py
-expkit/__init__.py
-expkit.egg-info/PKG-INFO
-expkit.egg-info/SOURCES.txt
-expkit.egg-info/dependency_links.txt
-expkit.egg-info/requires.txt
-expkit.egg-info/top_level.txt

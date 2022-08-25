@@ -1,3 +1,4 @@
+import copy
 from pathlib import Path
 from typing import Type, Union, get_args, get_origin, Dict, Tuple, Optional, List, Callable
 
@@ -69,6 +70,20 @@ def recursive_foreach_file(root: Path, func_foreach_file: Callable[[Path], None]
             continue
 
         raise ValueError(f"Unknown file type {file}")
+
+
+def deepcopy_dict_remove_private(obj: dict) -> dict:
+    data = {}
+
+    for k, v in obj.items():
+        if k.startswith("_"):
+            continue
+        if isinstance(v, dict):
+            data[k] = deepcopy_dict_remove_private(v)
+        else:
+            data[k] = copy.deepcopy(v)
+
+    return data
 
 
 class FinishedDeserialization():

@@ -86,6 +86,9 @@ class TaskDatabase():
     def get_task(self, name: str) -> Optional[StageTaskTemplate]:
         return self.tasks.get(name, None)
 
+    def __len__(self):
+        return len(self.tasks)
+
     __instance: 'TaskDatabase' = None
     @staticmethod
     def get_instance() -> 'TaskDatabase':
@@ -109,6 +112,9 @@ class StageDatabase():
     def get_stage(self, name: str) -> Optional[StageTemplate]:
         return self.stages.get(name, None)
 
+    def __len__(self):
+        return len(self.stages)
+
     __instance: 'StageDatabase' = None
     @staticmethod
     def get_instance() -> 'StageDatabase':
@@ -131,6 +137,9 @@ class StageGroupDatabase():
 
     def get_group(self, name: str) -> Optional[StageTemplateGroup]:
         return self.groups.get(name, None)
+
+    def __len__(self):
+        return len(self.groups)
 
     __instance: 'StageGroupDatabase' = None
     @staticmethod

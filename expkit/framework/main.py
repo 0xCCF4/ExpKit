@@ -7,7 +7,8 @@ from pathlib import Path
 from typing import Optional, List
 
 from expkit.base.logger import get_logger, init_global_logging
-from expkit.framework.database import TaskDatabase, auto_discover_databases
+from expkit.framework.database import TaskDatabase, auto_discover_databases, StageGroupDatabase, StageDatabase
+from expkit.framework.parser import ConfigParser
 
 LOGGER = None
 
@@ -16,11 +17,12 @@ def main(config: dict, artifacts: Optional[List[str]], output_directory: Optiona
     expkit_dir = Path(__file__).parent.parent
     LOGGER.info("Gathering all exploit chain modules")
     auto_discover_databases(expkit_dir)  # must only be called once
+    LOGGER.debug(f"Found {len(StageGroupDatabase.get_instance())} groups, {len(StageDatabase.get_instance())} stages, {len(TaskDatabase.get_instance())} tasks")
 
-    db = TaskDatabase.get_instance()
+    parser = ConfigParser()
+    parsed = parser.parse(config, artifacts)
 
-    for k, v in db.tasks.items():
-        print(k, v)
+    print(parsed)
 
     pass
 
@@ -31,7 +33,7 @@ if __name__ == "__main__":
     parser.add_argument("-v", "--verbose", action="store_true", help="verbose output", default=False)
     parser.add_argument("-d", "--debug", action="store_true", help="debug output", default=False)
     parser.add_argument("-f", "--file", help="configuration file to load", type=str, default=None)
-    parser.add_argument("-c", "--command", help="artifact to build, several artifacts can be separated by comma", type=str, default=None)
+    parser.add_argument("-t", "--targets", help="artifact to build, several artifacts can be separated by comma", type=str, default=None)
     parser.add_argument("-o", "--output", help="temporary build directory", type=str, default=None)
     parser.add_argument("-l", "--log", help="log file", type=str, default=None)
 
@@ -75,8 +77,8 @@ if __name__ == "__main__":
         LOGGER.debug("Config file exists")
 
     artifacts = None
-    if args.command is not None:
-        artifacts = args.command.split(",")
+    if args.targets is not None:
+        artifacts = args.targets.split(",")
         LOGGER.debug(f"Passed list of artifacts to build {artifacts}")
 
     output_dir = None
