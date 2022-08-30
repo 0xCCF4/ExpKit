@@ -4,6 +4,9 @@ from typing import List, TypeVar, Generic, Optional, Iterator, Union
 
 
 class Architecture(IntFlag):
+    UNKNOWN = 0
+    NONE = UNKNOWN
+
     i386 = 1
     AMD64 = 2
     ARM = 4
@@ -144,7 +147,15 @@ class Platform(IntFlag):
         return [value for value in Platform if value in self and value.is_single()]
 
 
-class PlatformArchitecture():
+class _PAMeta(type):
+    def __getattr__(cls, item):
+        result = PLATFORM_ARCHITECTURES.get(item, None)
+        if result is None:
+            raise AttributeError(f"PlatformArchitecture has no attribute {item}")
+        return result
+
+
+class PlatformArchitecture(metaclass=_PAMeta):
     def __init__(self, platform: Platform, architecture: Architecture):
 
         self.__initial_platform = platform
@@ -157,8 +168,8 @@ class PlatformArchitecture():
                 if a in p:
                     self._pairs.append((p, a))
 
-        if len(self._pairs) == 0:
-            raise RuntimeError("No supported platform/architecture combination found")
+    def merge(self, other: "PlatformArchitecture") -> "PlatformArchitecture":
+        return PlatformArchitecture(self.__initial_platform | other.__initial_platform, self.__initial_architecture | other.__initial_architecture)
 
     def __iter__(self):
         return iter(self._pairs)
@@ -180,6 +191,7 @@ class PlatformArchitecture():
 
 
 PLATFORM_ARCHITECTURES = {
+    "NONE": PlatformArchitecture(Platform.NONE, Architecture.NONE),
     "ALL": PlatformArchitecture(Platform.ALL, Architecture.ALL),
     "BIT32": PlatformArchitecture(Platform.ALL, Architecture.BIT32),
     "BIT64": PlatformArchitecture(Platform.ALL, Architecture.BIT64),

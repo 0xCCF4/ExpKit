@@ -58,7 +58,7 @@ def check_type(expected_type: Type, value: any) -> StatusError:
                     return True, "", ""
             return False, f"{type_err_prefix}.Union", "None of the union types matched"
 
-        elif issubclass(origin, type(any)):
+        elif origin is any:
             return True, "", ""
 
         elif issubclass(origin, List):

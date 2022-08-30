@@ -3,6 +3,7 @@ import threading
 from typing import Optional, List, Union
 import networkx as nx
 
+from expkit.base.architecture import PlatformArchitecture, Platform, Architecture, PLATFORM_ARCHITECTURES
 from expkit.base.logger import get_logger
 from expkit.base.utils import check_dict_types, error_on_fail, deepcopy_dict_remove_private, check_type
 from expkit.framework.database import StageGroupDatabase, StageDatabase
@@ -85,12 +86,19 @@ class ConfigParser:
             result.append(block)
         return result
 
+
+
     def _parse_root(self, config: dict) -> ParserBlock:
-        error_on_fail(check_dict_types({"artifacts": dict, "config": Optional[dict]}, config), "Unable to parse root config")
+        error_on_fail(check_dict_types(
+            {"artifacts": dict,
+             "config": Optional[dict],
+             "platforms": Optional[List[str]]
+             }, config), "Unable to parse root config")
 
         block = ParserBlock("root", {
             "config": deepcopy_dict_remove_private(config.get("config", {})),
-            "artifacts": {}
+            "artifacts": {},
+            "platforms": self._parse_platforms(config.get("platforms", []))
         })
 
         for artifact_name, artifact_config in deepcopy_dict_remove_private(config.get('artifacts', {})).items():
@@ -98,18 +106,33 @@ class ConfigParser:
 
         return block
 
+    def _parse_platforms(self, config: dict) -> PlatformArchitecture:
+        error_on_fail(check_type(List[str], config), "Unable to parse platforms config")
+
+        platform = PLATFORM_ARCHITECTURES["NONE"]
+
+        for platform_name in config:
+            new_platform = PLATFORM_ARCHITECTURES.get(platform_name, None)
+            if new_platform is None:
+                raise RuntimeError(f"Unknown platform {platform_name}")
+            platform = platform.merge(new_platform)
+
+        return platform
+
     def _parse_artifact(self, config: dict, root: ParserBlock, artifact_name: str) -> ParserBlock:
         error_on_fail(check_dict_types(
             {"stages": list,
              "config": Optional[dict],
-             "dependencies": Optional[list]
+             "dependencies": Optional[list],
+             "platforms": Optional[List[str]],
              }, config), f"Unable to parse artifact {artifact_name} config")
 
         block = ParserBlock("artifact", {
             "config": deepcopy_dict_remove_private(config.get("config", {})),
             "dependencies": copy.deepcopy(config.get("dependencies", [])),
             "stages": [],
-            "id": artifact_name
+            "id": artifact_name,
+            "platforms": self._parse_platforms(config.get("platforms", []))
         }, root)
 
         for dependency in block.data["dependencies"]:

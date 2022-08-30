@@ -21,8 +21,7 @@
 
     "base": {
       "platforms": [
-        "WINDOWS",
-        "AMD64"
+        "WINDOWS"
       ],
 
       "stages": [

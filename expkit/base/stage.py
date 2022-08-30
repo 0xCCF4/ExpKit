@@ -12,7 +12,7 @@ class StageTaskTemplate():
     """Perform an operation on within a virtual environment."""
 
     @type_checking
-    def __init__(self, name: str, description: str, platform: PlatformArchitecture, parameters: Dict[str, Type]):
+    def __init__(self, name: str, description: str, platform: PlatformArchitecture, parameters: Dict[str, any]):
         self.name = name
         self.description = description
         self.platform = platform

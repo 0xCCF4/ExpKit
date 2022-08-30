@@ -35,7 +35,7 @@ class CSharpStringTransformTemplate(StageTaskTemplate):
         super().__init__(
             name="task.obfuscation.csharp.string_transform_template",
             description="Transforms all strings within CSharp source code to prevent signature detection of used strings.",
-            platform=Platform.ALL,
+            platform=PlatformArchitecture.ALL,
             parameters={
                 "files": Dict[str, str],  # target, origin
                 "OBF_STRING_ENCODING": Optional[str]
