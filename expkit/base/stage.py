@@ -1,38 +1,33 @@
+import copy
 from pathlib import Path
 from typing import Dict, Type, List
 
 from expkit.base.payload import PayloadType, Payload
-from expkit.base.platform import Platform, PlatformDict
+from expkit.base.architecture import PlatformArchitecture
 
-from expkit.base.utils import check_dict_types, error_on_fail, error_on_fail_any, FinishedDeserialization, check_type
+from expkit.base.utils import type_checking, check_dict_types, error_on_fail
 
 
-class StageTaskTemplate(FinishedDeserialization):
+class StageTaskTemplate():
     """Perform an operation on within a virtual environment."""
 
-    def __init__(self, name: str, description: str, platform: Platform, parameters: Dict[str, Type]):
+    @type_checking
+    def __init__(self, name: str, description: str, platform: PlatformArchitecture, parameters: Dict[str, Type]):
         self.name = name
         self.description = description
         self.platform = platform
         self.parameters = parameters
-
-    def finish_deserialization(self):
-        error_on_fail_any([
-            check_type(str, self.name),
-            check_type(str, self.description),
-            check_type(Platform, self.platform),
-            check_type(Dict[str, Type], self.parameters)
-        ], "StageTaskTemplate deserialization")
 
     def execute(self, parameters: dict) -> bool:
         error_on_fail(check_dict_types(self.parameters, parameters), "StageTaskTemplate parameters")
         return True
 
 
-class StageTemplate(FinishedDeserialization):
+class StageTemplate():
     """Performs a transformation on a payload by executing multiple tasks."""
 
-    def __init__(self, name: str, description: str, platform: Platform, input: PayloadType, output: PayloadType, template_directory: Path, parameters: Dict[str, Type]):
+    @type_checking
+    def __init__(self, name: str, description: str, platform: PlatformArchitecture, input: PayloadType, output: PayloadType, template_directory: Path, parameters: Dict[str, Type]):
         self.name = name
         self.description = description
         self.platform = platform
@@ -49,47 +44,28 @@ class StageTemplate(FinishedDeserialization):
     def __repr__(self):
         return self.name
 
-    def finish_deserialization(self):
-        error_on_fail_any([
-            check_type(str, self.name),
-            check_type(str, self.description),
-            check_type(Platform, self.platform),
-            check_type(PayloadType, self.input),
-            check_type(PayloadType, self.output),
-            check_type(Path, self.template_directory),
-            check_type(Dict[str, Type], self.parameters)
-        ], "StageTemplate deserialization")
-
+    @type_checking
     def execute(self, payload: Payload, parameters: dict, build_directory: Path) -> Payload:
-        error_on_fail(check_dict_types(self.parameters, parameters), "StageTemplate parameters")
-
         pass # TODO
 
 
-class StageTemplateGroup(FinishedDeserialization):
+class StageTemplateGroup():
     """Representation of a platform-independent stage template group."""
 
-    def __init__(self, name: str, description: str, tasks: Dict[Platform, StageTemplate]):
+    @type_checking
+    def __init__(self, name: str, description: str, tasks: Dict[PlatformArchitecture, StageTemplate]):
         self.name = name
         self.description = description
-        self.tasks: PlatformDict[StageTemplate] = PlatformDict()
+        self.tasks: Dict[PlatformArchitecture, StageTemplate] = tasks
 
-        for k, v in tasks.items():
-            self.tasks.add(k, v)
-
+    @type_checking
     def execute(self, payload: Payload, parameters: dict, build_directory: Path) -> Payload:
-        task = self.tasks.get(payload.platform)
+        task = self.tasks.get(payload.platform, None)
 
-        if len(task) > 1:
-            raise ValueError(f"StageTemplateGroup contains multiple tasks for the same platform {payload.platform}")
-        elif len(task) == 0:
+        if task is None:
             raise ValueError(f"StageTemplateGroup contains no tasks for the given platform {payload.platform}")
 
-        return task[0].execute(payload, parameters, build_directory)
-
-    def finish_deserialization(self):
-        for t in self.tasks:
-            t.finish_deserialization()
+        return task.execute(payload, parameters, build_directory)
 
     def __str__(self):
         return self.name

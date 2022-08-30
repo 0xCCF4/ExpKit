@@ -10,11 +10,21 @@
     "__comment3": "general parameters",
     "BUILD_TYPE": "Debug"
   },
+
+  "__comment2": "Target platforms",
+  "platforms": [
+    "ALL"
+  ],
   
-  "__comment2": "artifact definitions",
+  "__comment3": "artifact definitions",
   "artifacts": {
 
     "base": {
+      "platforms": [
+        "WINDOWS",
+        "AMD64"
+      ],
+
       "stages": [
         {
           "name": "LOAD_FOLDER",

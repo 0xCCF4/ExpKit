@@ -1,28 +1,31 @@
-from enum import Enum
+from enum import IntEnum, auto
 
-from expkit.base.platform import Platform
+from expkit.base.architecture import PlatformArchitecture
+
+from expkit.base.utils import type_checking
 
 
-class PayloadType(Enum):
-    UNKNOWN = 0
+class PayloadType(IntEnum):
+    UNKNOWN = auto()
 
     # Compiled executable and shared libraries
-    DOTNET_DLL = 1
-    DOTNET_EXE = 2
+    DOTNET_DLL = auto()
+    DOTNET_EXE = auto()
 
-    NATIVE_STATIC_EXE = 3
-    NATIVE_DYNAMIC_EXE = 4
+    NATIVE_STATIC_EXE = auto()
+    NATIVE_DYNAMIC_EXE = auto()
 
-    NATIVE_STATIC_DLL = 5
-    NATIVE_DYNAMIC_DLL = 6
+    NATIVE_STATIC_DLL = auto()
+    NATIVE_DYNAMIC_DLL = auto()
 
-    NATIVE_SHELLCODE = 7
+    NATIVE_SHELLCODE = auto()
 
     # Source code and other files
-    POWERSHELL_SCRIPT = 8
-    CSHARP_PROJECT = 9
+    POWERSHELL_SCRIPT = auto()
+    CSHARP_PROJECT = auto()
 
     @staticmethod
+    @type_checking
     def get_type_from_name(name: str) -> "PayloadType":
         name = name.lower()
         for value in PayloadType:
@@ -39,7 +42,8 @@ class PayloadType(Enum):
 
 
 class Payload():
-    def __init__(self, type: PayloadType, platform: Platform, content: bytes, meta: dict = None):
+    @type_checking
+    def __init__(self, type: PayloadType, platform: PlatformArchitecture, content: bytes, meta: dict = None):
         self.type = type
         self.platform = platform
         self.data = {

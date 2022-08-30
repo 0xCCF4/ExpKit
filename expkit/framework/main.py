@@ -22,7 +22,7 @@ def main(config: dict, artifacts: Optional[List[str]], output_directory: Optiona
     parser = ConfigParser()
     parsed = parser.parse(config, artifacts)
 
-    print(parsed)
+    print(parser.get_build_plan())
 
     pass
 

@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import List, Optional, Callable, Dict
 
 from expkit.base.logger import get_logger
-from expkit.base.platform import Platform
+from expkit.base.architecture import PlatformArchitecture
 from expkit.base.stage import StageTaskTemplate
 from expkit.framework.database import register_task
 

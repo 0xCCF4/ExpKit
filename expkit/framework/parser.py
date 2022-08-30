@@ -5,22 +5,24 @@ import networkx as nx
 
 from expkit.base.logger import get_logger
 from expkit.base.utils import check_dict_types, error_on_fail, deepcopy_dict_remove_private, check_type
+from expkit.framework.database import StageGroupDatabase, StageDatabase
 
 LOGGER = get_logger(__name__)
 
 
-class _ParserBlock:
-    def __init__(self, name: str, data: dict, parent: '_ParserBlock' = None):
+class ParserBlock:
+    def __init__(self, name: str, data: dict, parent: 'ParserBlock' = None):
         self.name = name
         self.parent = parent
         self.data = data
+        self.template = None
         self._config_cache = None
 
     def __str__(self):
-        return self.name
+        return f"{self.name}({self.get_name()})"
 
     def __repr__(self):
-        return self.name
+        return str(self)
 
     def get_name(self):
         if self.name == "root":
@@ -48,13 +50,13 @@ class _ParserBlock:
 
 class ConfigParser:
     def __init__(self):
-        self._root: _ParserBlock = None
+        self._root: ParserBlock = None
         self._targets: Optional[List[str]] = None
         self.__lock = threading.Lock()
         self._dependency_graph: nx.DiGraph = None
         self.build_order: List[str] = []
 
-    def get_artifact(self, name: str) -> Optional[_ParserBlock]:
+    def get_artifact(self, name: str) -> Optional[ParserBlock]:
         assert self._root is not None and self._root.name == "root"
 
         for k, v in self._root.data["artifacts"].items():
@@ -62,7 +64,7 @@ class ConfigParser:
                 return v
         return None
 
-    def parse(self, config: dict, targets: Optional[List[str]] = None) -> _ParserBlock:
+    def parse(self, config: dict, targets: Optional[List[str]] = None) -> ParserBlock:
         LOGGER.debug("Parsing config")
         with self.__lock:
             self._root = self._parse_root(config)
@@ -70,26 +72,40 @@ class ConfigParser:
 
             self._resolve_dependencies()
             self._compute_dependency_order()
+            self._match_templates()
 
             return self._root
 
-    def _parse_root(self, config: dict) -> _ParserBlock:
+    def get_build_plan(self) -> List[ParserBlock]:
+        result = []
+        for target in self.build_order:
+            block = self.get_artifact(target)
+            if block is None:
+                raise RuntimeError(f"Unable to find artifact {target}")
+            result.append(block)
+        return result
+
+    def _parse_root(self, config: dict) -> ParserBlock:
         error_on_fail(check_dict_types({"artifacts": dict, "config": Optional[dict]}, config), "Unable to parse root config")
 
-        block = _ParserBlock("root", {
+        block = ParserBlock("root", {
             "config": deepcopy_dict_remove_private(config.get("config", {})),
             "artifacts": {}
         })
 
-        for artifact_name, artifact_config in config.get('artifacts', {}).items():
+        for artifact_name, artifact_config in deepcopy_dict_remove_private(config.get('artifacts', {})).items():
             block.data["artifacts"][artifact_name] = self._parse_artifact(artifact_config, block, artifact_name)
 
         return block
 
-    def _parse_artifact(self, config: dict, root: _ParserBlock, artifact_name: str) -> _ParserBlock:
-        error_on_fail(check_dict_types({"stages": list, "config": Optional[dict], "dependencies": Optional[list]}, config), f"Unable to parse artifact {artifact_name} config")
+    def _parse_artifact(self, config: dict, root: ParserBlock, artifact_name: str) -> ParserBlock:
+        error_on_fail(check_dict_types(
+            {"stages": list,
+             "config": Optional[dict],
+             "dependencies": Optional[list]
+             }, config), f"Unable to parse artifact {artifact_name} config")
 
-        block = _ParserBlock("artifact", {
+        block = ParserBlock("artifact", {
             "config": deepcopy_dict_remove_private(config.get("config", {})),
             "dependencies": copy.deepcopy(config.get("dependencies", [])),
             "stages": [],
@@ -104,12 +120,12 @@ class ConfigParser:
 
         return block
 
-    def _parse_stage(self, config: dict, parent: _ParserBlock, artifact_name: str) -> _ParserBlock:
+    def _parse_stage(self, config: dict, parent: ParserBlock, artifact_name: str) -> ParserBlock:
         error_on_fail(check_dict_types({"name": str, "config": Optional[Union[str, dict]]}, config), f"Unable to parse stage {config.get('name', 'unknown')} for artifact {artifact_name}")
 
         internal_config = config.get("config", None)
 
-        block = _ParserBlock("stage", {
+        block = ParserBlock("stage", {
             "name": config["name"],
             "config": None,
         }, parent)
@@ -181,3 +197,21 @@ class ConfigParser:
         self.build_order = topological_sort
 
         LOGGER.debug(f"Building artifacts {', '.join(self.build_order)}")
+
+    def _match_templates(self):
+        assert self._root is not None and self._root.name == "root"
+
+        for artifact_name, artifact_block in self._root.data["artifacts"].items():
+            assert artifact_block.name == "artifact"
+
+            for stage_block in artifact_block.data["stages"]:
+                assert stage_block.name == "stage"
+
+                # Prefer stage groups before individual stages
+                group = StageGroupDatabase.get_instance().get_group(stage_block.data["name"])
+
+                if group is None:
+                    LOGGER.error(f"Unable to find stage group {stage_block.data['name']}")
+                    raise RuntimeError(f"Unable to find stage group {stage_block.data['name']}")
+
+                stage_block.template = group
