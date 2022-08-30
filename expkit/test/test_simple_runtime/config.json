@@ -40,13 +40,12 @@
       "config": {
         "P_TEST_INT": "66"
       },
-
-      "dependencies": [
-        "base"
-      ],
       
       "stages": [
-        { "name": "LOAD_DEPENDENCY", "config": "base" },
+        {
+          "name": "LOAD_DEPENDENCY",
+          "dependencies":  ["base"]
+        },
         { "name": "TEMPLATE_ENGINE_CSHARP" },
         {
           "name": "OBFUSCATE_CSHARP",
@@ -70,13 +69,12 @@
       "config": {
         "P_TEST_INT": "33"
       },
-
-      "dependencies": [
-        "base"
-      ],
       
       "stages": [
-        { "name": "LOAD_DEPENDENCY", "config": "base" },
+        {
+          "name": "LOAD_DEPENDENCY",
+          "dependencies":  ["base"]
+        },
         { "name": "TEMPLATE_ENGINE_CSHARP" },
         {
           "name": "OBFUSCATE_CSHARP",

@@ -46,7 +46,7 @@ def init_global_logging(log_file: Optional[Path], file_logging_level:int=logging
     ch_out.setFormatter(formatter_ch_stdout)
     ch_out.addFilter(lambda record: record.levelno <= logging.INFO)
 
-    ch_err = logging.StreamHandler(stream=sys.stderr)
+    ch_err = logging.StreamHandler(stream=sys.stdout)
     ch_err.setLevel(logging.WARNING)
     ch_err.setFormatter(formatter_ch_stderr)
 

@@ -71,9 +71,10 @@ class ConfigParser:
             self._root = self._parse_root(config)
             self._targets = targets
 
+            self._resolve_platforms()
             self._resolve_dependencies()
             self._compute_dependency_order()
-            self._match_templates()
+            #self._match_templates()
 
             return self._root
 
@@ -85,8 +86,6 @@ class ConfigParser:
                 raise RuntimeError(f"Unable to find artifact {target}")
             result.append(block)
         return result
-
-
 
     def _parse_root(self, config: dict) -> ParserBlock:
         error_on_fail(check_dict_types(
@@ -106,7 +105,7 @@ class ConfigParser:
 
         return block
 
-    def _parse_platforms(self, config: dict) -> PlatformArchitecture:
+    def _parse_platforms(self, config: list) -> PlatformArchitecture:
         error_on_fail(check_type(List[str], config), "Unable to parse platforms config")
 
         platform = PLATFORM_ARCHITECTURES["NONE"]
@@ -144,13 +143,18 @@ class ConfigParser:
         return block
 
     def _parse_stage(self, config: dict, parent: ParserBlock, artifact_name: str) -> ParserBlock:
-        error_on_fail(check_dict_types({"name": str, "config": Optional[Union[str, dict]]}, config), f"Unable to parse stage {config.get('name', 'unknown')} for artifact {artifact_name}")
+        error_on_fail(check_dict_types({
+            "name": str,
+            "config": Optional[Union[str, dict]],
+            "dependencies": Optional[List[str]],
+        }, config), f"Unable to parse stage {config.get('name', 'unknown')} for artifact {artifact_name}")
 
         internal_config = config.get("config", None)
 
         block = ParserBlock("stage", {
             "name": config["name"],
             "config": None,
+            "dependencies": copy.deepcopy(config.get("dependencies", [])),
         }, parent)
 
         if internal_config is None:
@@ -164,6 +168,36 @@ class ConfigParser:
 
         return block
 
+    def _resolve_platforms(self):
+        assert self._root is not None and self._root.name == "root"
+
+        if self._root.data["platforms"].is_empty():
+            LOGGER.info("No platforms specified for root, using ALL platform")
+            self._root.data["platforms"] = PLATFORM_ARCHITECTURES["ALL"]
+
+        remove_artifacts = []
+
+        for artifact_name, artifact in self._root.data["artifacts"].items():
+            platform = artifact.data["platforms"]
+
+            if platform.is_empty():
+                LOGGER.info(f"No platforms specified for artifact {artifact_name}, using ALL platform")
+                artifact.data["platforms"] = PLATFORM_ARCHITECTURES["ALL"]
+
+            intersected_platform = artifact.data["platforms"].intersection(self._root.data["platforms"])
+
+            if intersected_platform != artifact.data["platforms"]:
+                LOGGER.debug(f"Artifact {artifact_name} has platforms that are not supported by root, removing them")
+
+            if intersected_platform.is_empty():
+                LOGGER.warning(f"Artifact {artifact_name} has no target platforms after intersection with root, removing it")
+                remove_artifacts.append(artifact_name)
+
+            artifact.data["platforms"] = intersected_platform
+
+        for artifact_name in remove_artifacts:
+            del self._root.data["artifacts"][artifact_name]
+
     def _resolve_dependencies(self):
         LOGGER.debug("Resolving dependencies")
         assert self._root is not None and self._root.name == "root"
@@ -176,8 +210,18 @@ class ConfigParser:
         for artifact_name, artifact_block in self._root.data["artifacts"].items():
             assert artifact_block.name == "artifact"
 
+            collected_dependencies = []
+
+            for manual_dependency in artifact_block.data["dependencies"]:
+                collected_dependencies.append(manual_dependency)
+
+            for stage_block in artifact_block.data["stages"]:
+                assert stage_block.name == "stage"
+                for task_dependency in stage_block.data.get("dependencies", []):
+                    collected_dependencies.append(task_dependency)
+
             linked_dependecies = []
-            for dependency in sorted(set(artifact_block.data["dependencies"])):
+            for dependency in sorted(set(collected_dependencies)):
                 if dependency not in self._root.data["artifacts"]:
                     raise RuntimeError(f"Artifact {artifact_name} depends on artifact {dependency} which is not defined")
 
@@ -187,6 +231,14 @@ class ConfigParser:
                 self._dependency_graph.add_edge(artifact_name, dependency)
 
             artifact_block.data["dependencies"] = linked_dependecies
+
+            for stage_block in artifact_block.data["stages"]:
+                assert stage_block.name == "stage"
+                task_dependencies = []
+                for task_dependency in stage_block.data.get("dependencies", []):
+                    dependency_block = self._root.data["artifacts"][task_dependency]
+                    task_dependencies.append(dependency_block)
+                stage_block.data["dependencies"] = task_dependencies
 
         LOGGER.debug("Checking for dependency cycles")
         dependency_cycles = list(nx.simple_cycles(self._dependency_graph))

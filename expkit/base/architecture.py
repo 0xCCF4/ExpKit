@@ -171,6 +171,12 @@ class PlatformArchitecture(metaclass=_PAMeta):
     def merge(self, other: "PlatformArchitecture") -> "PlatformArchitecture":
         return PlatformArchitecture(self.__initial_platform | other.__initial_platform, self.__initial_architecture | other.__initial_architecture)
 
+    def intersection(self, other: "PlatformArchitecture") -> "PlatformArchitecture":
+        return PlatformArchitecture(self.__initial_platform & other.__initial_platform, self.__initial_architecture & other.__initial_architecture)
+
+    def is_empty(self):
+        return len(self._pairs) == 0
+
     def __iter__(self):
         return iter(self._pairs)
 
@@ -189,10 +195,17 @@ class PlatformArchitecture(metaclass=_PAMeta):
     def __str__(self):
         return f"{self.__class__.__name__}({self._pairs})"
 
+    def __eq__(self, other: "PlatformArchitecture"):
+        if isinstance(other, PlatformArchitecture):
+            return set(self._pairs) == set(other._pairs)
+        else:
+            return super().__eq__(other)
+
 
 PLATFORM_ARCHITECTURES = {
     "NONE": PlatformArchitecture(Platform.NONE, Architecture.NONE),
     "ALL": PlatformArchitecture(Platform.ALL, Architecture.ALL),
+    "*": PlatformArchitecture(Platform.ALL, Architecture.ALL),
     "BIT32": PlatformArchitecture(Platform.ALL, Architecture.BIT32),
     "BIT64": PlatformArchitecture(Platform.ALL, Architecture.BIT64),
     "WINDOWS": PlatformArchitecture(Platform.WINDOWS, Architecture.ALL),
