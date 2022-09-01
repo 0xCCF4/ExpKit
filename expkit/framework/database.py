@@ -4,8 +4,9 @@ from pathlib import Path
 from typing import Dict, Optional, Type, TypeVar, Generic, List, Callable
 from expkit.base.logger import get_logger
 from expkit.base.stage import StageTaskTemplate, StageTemplate, StageTemplateGroup
-from expkit.base.utils import recursive_foreach_file
 from importlib import import_module
+
+from expkit.base.utils.files import recursive_foreach_file
 
 LOGGER = get_logger(__name__)
 
@@ -52,12 +53,12 @@ def auto_discover_databases(directory: Path, module_prefix: str = "expkit."):
     LOGGER.debug(f"Discovering database entries in {directory}")
 
     files = []
-    recursive_foreach_file(directory, lambda f: files.append(f), lambda d: d.name != "__pycache__")
+    recursive_foreach_file(directory, lambda f: files.append(f), lambda d: d.name != "__pycache__" and not d.name.startswith("test"))
 
     if len(module_prefix.strip()) > 0 and not module_prefix.endswith("."):
         module_prefix += "."
     for file in files:
-        if file.name.endswith(".py"):
+        if file.name.endswith(".py") and not file.name.startswith("test"):
             module_name = f"{module_prefix}{str(file.relative_to(directory)).replace(os.sep, '.')[:-3]}"
             try:
                 import_module(module_name)  # Calls to register_* will be executed

@@ -5,8 +5,10 @@ from pathlib import Path
 from typing import List, Optional, Callable, Dict
 
 from expkit.base.logger import get_logger
-from expkit.base.architecture import PlatformArchitecture
-from expkit.base.stage import StageTaskTemplate
+from expkit.base.architecture import TargetPlatform
+from expkit.base.stage import StageTaskTemplate, StageTemplate
+from expkit.base.utils.base import error_on_fail
+from expkit.base.utils.type_checking import check_dict_types
 from expkit.framework.database import register_task
 
 def __transform_base64(input: str) -> str:
@@ -18,7 +20,7 @@ def __transform_base64(input: str) -> str:
     return out
 
 
-TRANSFORMATIONS = {
+TRANSFORMATIONS: Dict[str, Callable[[str], str]] = {
     "base64": __transform_base64
 }
 
@@ -33,10 +35,10 @@ STATUS_AT_STRING = 2
 class CSharpStringTransformTemplate(StageTaskTemplate):
     def __init__(self):
         super().__init__(
-            name="task.obfuscation.csharp.string_transform_template",
+            name="tasks.obfuscation.csharp.string_transform_template",
             description="Transforms all strings within CSharp source code to prevent signature detection of used strings.",
-            platform=PlatformArchitecture.ALL,
-            parameters={
+            platform=TargetPlatform.ALL,
+            required_parameters={
                 "files": Dict[str, str],  # target, origin
                 "OBF_STRING_ENCODING": Optional[str]
             }  # mapping from input to output files
@@ -44,9 +46,10 @@ class CSharpStringTransformTemplate(StageTaskTemplate):
 
         self.__status: int = 0
         self.__parse_lock = threading.Lock()
+        self.__transform_func = None
 
-    def execute(self, parameters: dict) -> bool:
-        super().execute(parameters)
+    def execute(self, parameters: dict, build_directory: Path, stage: StageTemplate) -> bool:
+        error_on_fail(check_dict_types(parameters, self.required_parameters), "Invalid parameters for task:")
 
         for target, origin in parameters["files"]:
             origin_path = Path(origin)
@@ -75,6 +78,7 @@ class CSharpStringTransformTemplate(StageTaskTemplate):
     def _transform(self, source: str, transform: Callable[[re.Match], str]) -> str:
         with self.__parse_lock:
             self.__status = STATUS_NORMAL
+            self.__transform_func = transform
 
             old_source = ""
             cmp = re.compile(r'(@)?(\"[^\"]|\"\")', re.MULTILINE | re.DOTALL)
@@ -86,10 +90,11 @@ class CSharpStringTransformTemplate(StageTaskTemplate):
             cmp = re.compile(r'(\{\{BEGIN_NA_STRING\}\})(.*?)(\{\{END_NA_STRING\}\})', re.MULTILINE | re.DOTALL)
             source = cmp.sub(self._replace_strings_normal, source)
             cmp = re.compile(r'(\{\{BEGIN_AT_STRING\}\})(.*?)(\{\{END_AT_STRING\}\})', re.MULTILINE | re.DOTALL)
-            source = cmp.sub(transform, source)
+            source = cmp.sub(self._replace_strings_at, source)
             return source
 
     def _parse_source(self, match: re.Match) -> str:
+        assert self.__parse_lock.locked()
 
         index = match.start()
 
@@ -139,9 +144,11 @@ class CSharpStringTransformTemplate(StageTaskTemplate):
         return result
 
     def _replace_strings_normal(self, match: re.Match) -> str:
-        prefix = match.group(1)
+        assert self.__parse_lock.locked()
+
+        # prefix = match.group(1)
         content: str = match.group(2)
-        postfix = match.group(3)
+        # postfix = match.group(3)
 
         def replace_slash(m):
             index = m.start()
@@ -176,3 +183,12 @@ class CSharpStringTransformTemplate(StageTaskTemplate):
         out = "{{BEGIN_AT_STRING}}" + content_resolved + "{{END_AT_STRING}}"
         # print(str(match.group(0)), " --> ", content, " --> ", content_resolved, " --> ", out)
         return out
+
+    def _replace_strings_at(self, match: re.Match) -> str:
+        assert self.__parse_lock.locked()
+
+        content: str = match.group(2)
+        content = content.replace("{{CONTINUE_NA_STRING}}", "\\\"")
+        content = content.replace("{{CONTINUE_AT_STRING}}", "\"")
+
+        return self.__transform_func(content)

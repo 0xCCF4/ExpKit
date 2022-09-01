@@ -1,8 +1,7 @@
 from enum import IntEnum, auto
 
-from expkit.base.architecture import PlatformArchitecture
-
-from expkit.base.utils import type_checking
+from expkit.base.architecture import TargetPlatform
+from expkit.base.utils.type_checking import type_guard
 
 
 class PayloadType(IntEnum):
@@ -25,7 +24,7 @@ class PayloadType(IntEnum):
     CSHARP_PROJECT = auto()
 
     @staticmethod
-    @type_checking
+    @type_guard
     def get_type_from_name(name: str) -> "PayloadType":
         name = name.lower()
         for value in PayloadType:
@@ -42,8 +41,8 @@ class PayloadType(IntEnum):
 
 
 class Payload():
-    @type_checking
-    def __init__(self, type: PayloadType, platform: PlatformArchitecture, content: bytes, meta: dict = None):
+    @type_guard
+    def __init__(self, type: PayloadType, platform: TargetPlatform, content: bytes, meta: dict = None):
         self.type = type
         self.platform = platform
         self.data = {

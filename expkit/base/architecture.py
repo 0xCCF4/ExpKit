@@ -1,6 +1,6 @@
 from enum import IntFlag
 import sys, platform
-from typing import List, TypeVar, Generic, Optional, Iterator, Union
+from typing import List, TypeVar, Generic, Optional, Iterator, Union, Dict
 
 
 class Architecture(IntFlag):
@@ -149,13 +149,13 @@ class Platform(IntFlag):
 
 class _PAMeta(type):
     def __getattr__(cls, item):
-        result = PLATFORM_ARCHITECTURES.get(item, None)
+        result = _PLATFORM_ARCHITECTURES.get(item, None)
         if result is None:
             raise AttributeError(f"PlatformArchitecture has no attribute {item}")
         return result
 
 
-class PlatformArchitecture(metaclass=_PAMeta):
+class TargetPlatform(metaclass=_PAMeta):
     def __init__(self, platform: Platform, architecture: Architecture):
 
         self.__initial_platform = platform
@@ -168,11 +168,11 @@ class PlatformArchitecture(metaclass=_PAMeta):
                 if a in p:
                     self._pairs.append((p, a))
 
-    def merge(self, other: "PlatformArchitecture") -> "PlatformArchitecture":
-        return PlatformArchitecture(self.__initial_platform | other.__initial_platform, self.__initial_architecture | other.__initial_architecture)
+    def merge(self, other: "TargetPlatform") -> "TargetPlatform":
+        return TargetPlatform(self.__initial_platform | other.__initial_platform, self.__initial_architecture | other.__initial_architecture)
 
-    def intersection(self, other: "PlatformArchitecture") -> "PlatformArchitecture":
-        return PlatformArchitecture(self.__initial_platform & other.__initial_platform, self.__initial_architecture & other.__initial_architecture)
+    def intersection(self, other: "TargetPlatform") -> "TargetPlatform":
+        return TargetPlatform(self.__initial_platform & other.__initial_platform, self.__initial_architecture & other.__initial_architecture)
 
     def is_empty(self):
         return len(self._pairs) == 0
@@ -195,27 +195,31 @@ class PlatformArchitecture(metaclass=_PAMeta):
     def __str__(self):
         return f"{self.__class__.__name__}({self._pairs})"
 
-    def __eq__(self, other: "PlatformArchitecture"):
-        if isinstance(other, PlatformArchitecture):
+    def __eq__(self, other: "TargetPlatform"):
+        if isinstance(other, TargetPlatform):
             return set(self._pairs) == set(other._pairs)
         else:
             return super().__eq__(other)
 
+    @staticmethod
+    def get_default_values() -> Dict[str, "TargetPlatform"]:
+        return _PLATFORM_ARCHITECTURES
 
-PLATFORM_ARCHITECTURES = {
-    "NONE": PlatformArchitecture(Platform.NONE, Architecture.NONE),
-    "ALL": PlatformArchitecture(Platform.ALL, Architecture.ALL),
-    "*": PlatformArchitecture(Platform.ALL, Architecture.ALL),
-    "BIT32": PlatformArchitecture(Platform.ALL, Architecture.BIT32),
-    "BIT64": PlatformArchitecture(Platform.ALL, Architecture.BIT64),
-    "WINDOWS": PlatformArchitecture(Platform.WINDOWS, Architecture.ALL),
-    "LINUX": PlatformArchitecture(Platform.LINUX, Architecture.ALL),
-    "LINUX32": PlatformArchitecture(Platform.LINUX, Architecture.BIT32),
-    "LINUX64": PlatformArchitecture(Platform.LINUX, Architecture.BIT64),
-    "MACOS": PlatformArchitecture(Platform.MACOS, Architecture.ALL),
-    "MACOS64": PlatformArchitecture(Platform.MACOS, Architecture.BIT64),
-    "WINDOWS32": PlatformArchitecture(Platform.WINDOWS, Architecture.BIT32),
-    "WINDOWS64": PlatformArchitecture(Platform.WINDOWS, Architecture.BIT64)
+
+_PLATFORM_ARCHITECTURES = {
+    "NONE": TargetPlatform(Platform.NONE, Architecture.NONE),
+    "ALL": TargetPlatform(Platform.ALL, Architecture.ALL),
+    "*": TargetPlatform(Platform.ALL, Architecture.ALL),
+    "BIT32": TargetPlatform(Platform.ALL, Architecture.BIT32),
+    "BIT64": TargetPlatform(Platform.ALL, Architecture.BIT64),
+    "WINDOWS": TargetPlatform(Platform.WINDOWS, Architecture.ALL),
+    "LINUX": TargetPlatform(Platform.LINUX, Architecture.ALL),
+    "LINUX32": TargetPlatform(Platform.LINUX, Architecture.BIT32),
+    "LINUX64": TargetPlatform(Platform.LINUX, Architecture.BIT64),
+    "MACOS": TargetPlatform(Platform.MACOS, Architecture.ALL),
+    "MACOS64": TargetPlatform(Platform.MACOS, Architecture.BIT64),
+    "WINDOWS32": TargetPlatform(Platform.WINDOWS, Architecture.BIT32),
+    "WINDOWS64": TargetPlatform(Platform.WINDOWS, Architecture.BIT64)
 }
 
 
