@@ -12,10 +12,12 @@ class Architecture(IntFlag):
     ARM = 4
     ARM64 = 8
 
+    DUMMY = 16
+
     BIT32 = i386 | ARM
     BIT64 = AMD64 | ARM64
 
-    ALL = BIT32 | BIT64
+    ALL = BIT32 | BIT64 | DUMMY
 
     @staticmethod
     def get_architecture() -> "Architecture":
@@ -168,7 +170,7 @@ class TargetPlatform(metaclass=_PAMeta):
                 if a in p:
                     self._pairs.append((p, a))
 
-    def merge(self, other: "TargetPlatform") -> "TargetPlatform":
+    def union(self, other: "TargetPlatform") -> "TargetPlatform":
         return TargetPlatform(self.__initial_platform | other.__initial_platform, self.__initial_architecture | other.__initial_architecture)
 
     def intersection(self, other: "TargetPlatform") -> "TargetPlatform":
@@ -186,8 +188,14 @@ class TargetPlatform(metaclass=_PAMeta):
     def __getitem__(self, index):
         return self._pairs[index]
 
-    def __contains__(self, item):
-        return item in self._pairs
+    def __contains__(self, other):
+        if isinstance(other, TargetPlatform):
+            for pair in other._pairs:
+                if pair not in self._pairs:
+                    return False
+            return True
+        else:
+            return super().__contains__(other)
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self._pairs})"
@@ -200,6 +208,9 @@ class TargetPlatform(metaclass=_PAMeta):
             return set(self._pairs) == set(other._pairs)
         else:
             return super().__eq__(other)
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
     @staticmethod
     def get_default_values() -> Dict[str, "TargetPlatform"]:

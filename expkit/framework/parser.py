@@ -57,7 +57,7 @@ class ParserBlock:
             new_platform = TargetPlatform.get_default_values().get(platform_name, None)
             if new_platform is None:
                 raise RuntimeError(f"Unknown platform {platform_name}")
-            platform = platform.merge(new_platform)
+            platform = platform.union(new_platform)
 
         return platform
 

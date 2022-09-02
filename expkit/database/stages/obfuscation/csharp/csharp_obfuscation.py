@@ -2,7 +2,9 @@ from typing import List, Optional
 
 from expkit.base.architecture import TargetPlatform
 from expkit.base.payload import Payload, PayloadType
-from expkit.base.stage import StageTemplate, StageContext, StageTaskTemplate
+from expkit.base.stage.base import StageTemplate
+from expkit.base.stage.context import StageContext
+from expkit.base.task.base import StageTaskTemplate
 from expkit.base.utils.files import recursive_foreach_file
 from expkit.database.tasks.general.utils.tar_folder import TarTaskOutput
 from expkit.framework.database import register_stage, TaskDatabase
@@ -15,7 +17,9 @@ class CSharpObfuscationStage(StageTemplate):
             name="stages.obfuscation.csharp.csharp_obfuscation",
             description="Obfuscates CSharp source code to prevent signature detection.",
             platform=TargetPlatform.ALL,
-            required_parameters={}
+            required_parameters={
+                "OBF_STRING_ENCODING": Optional[str]
+            }
         )
 
         self.__status: int = 0
@@ -71,12 +75,11 @@ class CSharpObfuscationStage(StageTemplate):
 
         return Payload(
             type=PayloadType.CSHARP_PROJECT,
-            platform=context.initial_payload.platform,
             content=context.get("output"))
 
     def get_supported_input_payload_types(self) -> List[PayloadType]:
         return [PayloadType.CSHARP_PROJECT]
 
-    def get_output_payload_type(self,  input: Optional[PayloadType]=None) -> Optional[PayloadType]:
-        return PayloadType.CSHARP_PROJECT if input == PayloadType.CSHARP_PROJECT else None
+    def get_output_payload_type(self,  input: PayloadType=None) -> List[PayloadType]:
+        return [PayloadType.CSHARP_PROJECT] if input == PayloadType.CSHARP_PROJECT else []
     

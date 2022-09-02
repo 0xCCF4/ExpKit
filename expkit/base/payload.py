@@ -6,6 +6,7 @@ from expkit.base.utils.type_checking import type_guard
 
 class PayloadType(IntEnum):
     UNKNOWN = auto()
+    EMPTY = auto()
 
     # Compiled executable and shared libraries
     DOTNET_DLL = auto()
@@ -33,6 +34,19 @@ class PayloadType(IntEnum):
 
         return PayloadType.UNKNOWN
 
+    @staticmethod
+    def get_all_project_types():
+        return [value for value in PayloadType if value.is_project()]
+
+    def is_project(self):
+        return self.name.endswith("_PROJECT")
+
+    def is_empty(self):
+        return self == PayloadType.EMPTY
+
+    def is_file(self):
+        return not self.is_project() and not self.is_empty()
+
     def __str__(self):
         return self.name
 
@@ -44,23 +58,21 @@ class Payload():
     @type_guard
     def __init__(self, type: PayloadType, platform: TargetPlatform, content: bytes, meta: dict = None):
         self.type = type
-        self.platform = platform
-        self.data = {
-            "content": content,
-            "meta": meta if meta is not None else {}
-        }
+        self.content = content
+        self.meta = meta if meta is not None else {}
+
 
     def __str__(self) -> str:
         return self.type.name
 
     def get_content(self) -> bytes:
-        return self.data["content"]
+        return self.content
 
     def get_content_base64(self) -> str:
-        return self.data["content"].decode('base64')
+        return self.content.decode('base64')
 
     def get_content_hex(self) -> str:
-        return self.data["content"].hex()
+        return self.content.hex()
 
     def get_meta(self) -> dict:
-        return self.data["meta"]
+        return self.meta

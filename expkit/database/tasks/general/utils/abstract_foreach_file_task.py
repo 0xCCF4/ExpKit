@@ -1,11 +1,12 @@
 import re
-import shutil
 from pathlib import Path
 from typing import Optional, List
 
 from expkit.base.architecture import TargetPlatform
 from expkit.base.logger import get_logger
-from expkit.base.stage import StageTaskTemplate, StageTemplate, TaskOutput
+from expkit.base.stage.base import StageTemplate
+from expkit.base.stage.context import StageContext
+from expkit.base.task.base import StageTaskTemplate, TaskOutput
 from expkit.base.utils.base import error_on_fail
 from expkit.base.utils.files import recursive_foreach_file
 from expkit.base.utils.type_checking import check_dict_types
@@ -21,7 +22,7 @@ class AbstractForeachFileTask(StageTaskTemplate):
             platform=platform,
             required_parameters={
                 "exclude": Optional[List[str]], # list of files to exclude (regex format string)
-                "include": Optional[List[str]]  # list of files to include (regex format string) - if not specified, all files are included
+                "include": Optional[List[str]],  # list of files to include (regex format string) - if not specified, all files are included
                 **required_parameters
             }
         )

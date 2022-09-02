@@ -7,11 +7,10 @@ from typing import Optional, List
 
 from expkit.base.architecture import TargetPlatform
 from expkit.base.logger import get_logger
-from expkit.base.stage import StageTaskTemplate, StageTemplate, TaskOutput
+from expkit.base.stage.base import StageTemplate
+from expkit.base.task.base import StageTaskTemplate, TaskOutput
 from expkit.base.utils.base import error_on_fail
-from expkit.base.utils.files import recursive_foreach_file
 from expkit.base.utils.type_checking import check_dict_types
-from expkit.database.tasks.general.utils.abstract_foreach_file_task import AbstractForeachFileTask
 from expkit.framework.database import register_task
 
 LOGGER = get_logger(__name__)
@@ -21,7 +20,7 @@ LOGGER = get_logger(__name__)
 class UntarFolderTask(StageTaskTemplate):
     def __init__(self):
         super().__init__(
-            name="task.general.utils.untar_folder",
+            name="tasks.general.utils.untar_folder",
             description="Extracts an in memory tar folder to the disk.",
             platform=TargetPlatform.ALL,
             required_parameters={

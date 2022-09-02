@@ -2,16 +2,19 @@ import os
 import threading
 from pathlib import Path
 from typing import Dict, Optional, Type, TypeVar, Generic, List, Callable
+
+from expkit.base.group.base import StageTemplateGroup
 from expkit.base.logger import get_logger
-from expkit.base.stage import StageTaskTemplate, StageTemplate, StageTemplateGroup
 from importlib import import_module
 
+from expkit.base.stage.base import StageTemplate
+from expkit.base.task.base import StageTaskTemplate
 from expkit.base.utils.files import recursive_foreach_file
 
 LOGGER = get_logger(__name__)
 
 T = TypeVar("T")
-class RegisterAnnotationHelper(Generic[T]):
+class RegisterDecoratorHelper(Generic[T]):
     def __init__(self):
         self._registered: List[T] = []
         self._lock = threading.Lock()
@@ -32,9 +35,9 @@ class RegisterAnnotationHelper(Generic[T]):
             else:
                 self._registered.append(obj)
 
-__helper_tasks: RegisterAnnotationHelper[StageTaskTemplate] = RegisterAnnotationHelper()
-__helper_stages: RegisterAnnotationHelper[StageTemplate] = RegisterAnnotationHelper()
-__helper_stage_groups: RegisterAnnotationHelper[StageTemplateGroup] = RegisterAnnotationHelper()
+__helper_tasks: RegisterDecoratorHelper[StageTaskTemplate] = RegisterDecoratorHelper()
+__helper_stages: RegisterDecoratorHelper[StageTemplate] = RegisterDecoratorHelper()
+__helper_stage_groups: RegisterDecoratorHelper[StageTemplateGroup] = RegisterDecoratorHelper()
 
 
 def register_task(task: Type[StageTaskTemplate], *nargs, **kwargs):
@@ -70,6 +73,8 @@ def auto_discover_databases(directory: Path, module_prefix: str = "expkit."):
     __helper_tasks.finalize(TaskDatabase.get_instance().add_task)
     __helper_stages.finalize(StageDatabase.get_instance().add_stage)
     __helper_stage_groups.finalize(StageGroupDatabase.get_instance().add_group)
+
+    StageGroupDatabase.get_instance().build_caches()
 
 
 class TaskDatabase():
@@ -148,3 +153,7 @@ class StageGroupDatabase():
         if StageGroupDatabase.__instance is None:
             StageGroupDatabase.__instance = StageGroupDatabase()
         return StageGroupDatabase.__instance
+
+    def build_caches(self):
+        for group in self.groups.values():
+            group.build_cache()

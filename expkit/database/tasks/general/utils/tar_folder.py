@@ -7,10 +7,8 @@ from typing import Optional, List
 
 from expkit.base.architecture import TargetPlatform
 from expkit.base.logger import get_logger
-from expkit.base.stage import StageTaskTemplate, StageTemplate, TaskOutput
-from expkit.base.utils.base import error_on_fail
-from expkit.base.utils.files import recursive_foreach_file
-from expkit.base.utils.type_checking import check_dict_types
+from expkit.base.stage.base import StageTemplate
+from expkit.base.task.base import TaskOutput
 from expkit.database.tasks.general.utils.abstract_foreach_file_task import AbstractForeachFileTask
 from expkit.framework.database import register_task
 
@@ -27,7 +25,7 @@ class TarTaskOutput(TaskOutput):
 class TarFolderTask(AbstractForeachFileTask):
     def __init__(self):
         super().__init__(
-            name="task.general.utils.tar_folder",
+            name="tasks.general.utils.tar_folder",
             description="Creates an in memory tar files from a folder on disk.",
             platform=TargetPlatform.ALL,
             required_parameters={
