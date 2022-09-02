@@ -2,11 +2,11 @@ import base64
 import re
 import threading
 from pathlib import Path
-from typing import List, Optional, Callable, Dict
+from typing import List, Optional, Callable, Dict, Tuple
 
 from expkit.base.logger import get_logger
 from expkit.base.architecture import TargetPlatform
-from expkit.base.stage import StageTaskTemplate, StageTemplate
+from expkit.base.stage import StageTaskTemplate, StageTemplate, TaskOutput
 from expkit.base.utils.base import error_on_fail
 from expkit.base.utils.type_checking import check_dict_types
 from expkit.framework.database import register_task
@@ -32,51 +32,48 @@ STATUS_AT_STRING = 2
 
 
 @register_task
-class CSharpStringTransformTemplate(StageTaskTemplate):
+class CSharpStringTransformTemplateTask(StageTaskTemplate):
     def __init__(self):
         super().__init__(
             name="tasks.obfuscation.csharp.string_transform_template",
             description="Transforms all strings within CSharp source code to prevent signature detection of used strings.",
             platform=TargetPlatform.ALL,
             required_parameters={
-                "files": Dict[str, str],  # target, origin
+                "files": List[Tuple[Path, Path]],  # target, origin - mapping from input to output files
                 "OBF_STRING_ENCODING": Optional[str]
-            }  # mapping from input to output files
+            } 
         )
 
         self.__status: int = 0
-        self.__parse_lock = threading.Lock()
         self.__transform_func = None
 
-    def execute(self, parameters: dict, build_directory: Path, stage: StageTemplate) -> bool:
+    def execute(self, parameters: dict, build_directory: Path, stage: StageTemplate) -> TaskOutput:
         error_on_fail(check_dict_types(parameters, self.required_parameters), "Invalid parameters for task:")
 
-        for target, origin in parameters["files"]:
-            origin_path = Path(origin)
-            target_path = Path(target)
+        for target_path, origin_path in parameters["files"]:
 
             if not origin_path.exists() or not origin_path.is_file():
-                LOGGER.error(f"Source file {origin} does not exist")
-                return False
+                LOGGER.error(f"Source file {origin_path} does not exist")
+                return TaskOutput(success=False)
 
             if target_path.exists() and target_path.is_file():
-                LOGGER.warning(f"Target source file {target} already exists")
+                LOGGER.warning(f"Target source file {target_path} already exists")
 
             origin_source = origin_path.read_text("utf-8")
 
             transform = TRANSFORMATIONS.get(parameters.get("OBF_STRING_ENCODING", "base64"), None)
             if transform is None:
                 LOGGER.error(f"Unknown string encoding {parameters.get('OBF_STRING_ENCODING', 'base64')}")
-                return False
+                return TaskOutput(success=False)
 
-            LOGGER.debug(f"Transforming {origin} to {target}")
+            LOGGER.debug(f"Transforming {origin_path} to {target_path}")
             target_source = self._transform(origin_source, transform)
 
             target_path.write_text(target_source, "utf-8")
-            return True
+            return TaskOutput(success=True)
 
-    def _transform(self, source: str, transform: Callable[[re.Match], str]) -> str:
-        with self.__parse_lock:
+    def _transform(self, source: str, transform: Callable[[str], str]) -> str:
+        with self._lock:
             self.__status = STATUS_NORMAL
             self.__transform_func = transform
 
@@ -94,7 +91,7 @@ class CSharpStringTransformTemplate(StageTaskTemplate):
             return source
 
     def _parse_source(self, match: re.Match) -> str:
-        assert self.__parse_lock.locked()
+        assert self._lock.locked()
 
         index = match.start()
 
@@ -144,7 +141,7 @@ class CSharpStringTransformTemplate(StageTaskTemplate):
         return result
 
     def _replace_strings_normal(self, match: re.Match) -> str:
-        assert self.__parse_lock.locked()
+        assert self._lock.locked()
 
         # prefix = match.group(1)
         content: str = match.group(2)
@@ -185,7 +182,7 @@ class CSharpStringTransformTemplate(StageTaskTemplate):
         return out
 
     def _replace_strings_at(self, match: re.Match) -> str:
-        assert self.__parse_lock.locked()
+        assert self._lock.locked()
 
         content: str = match.group(2)
         content = content.replace("{{CONTINUE_NA_STRING}}", "\\\"")
