@@ -1,4 +1,5 @@
 import os
+from functools import wraps
 from pathlib import Path
 from typing import List, Optional
 
@@ -8,9 +9,10 @@ from expkit.base.stage.base import StageTemplate
 from expkit.base.stage.context import StageContext
 from expkit.base.task.base import StageTaskTemplate
 from expkit.database.tasks.general.utils.tar_folder import TarTaskOutput
-from expkit.framework.database import register_stage, TaskDatabase
+from expkit.framework.database import register_stage, TaskDatabase, auto_stage_group
 
 
+@auto_stage_group("LOAD_FOLDER", "Loads a project folder from disk.")
 @register_stage
 class LoadProject(StageTemplate):
     def __init__(self):

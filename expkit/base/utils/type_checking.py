@@ -1,4 +1,5 @@
 import inspect
+from functools import wraps
 from types import FrameType
 from typing import Type, Tuple, get_origin, get_args, ForwardRef, Union, List, Dict, TypeVar
 
@@ -126,6 +127,7 @@ def type_guard(func: T) -> T:
     signature = inspect.signature(func)
     parameters = signature.parameters
 
+    @wraps(func)
     def wrapped_func(*args, **kwargs) -> any:
         for i, x in enumerate(parameters.items()):
             name, parameter = x

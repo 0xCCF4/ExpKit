@@ -26,7 +26,7 @@ class StageTemplateGroup():
     """Representation of a platform-independent stage template group."""
 
     @type_guard
-    def __init__(self, name: str, description: str, stages: List[StageTemplate]=None):
+    def __init__(self, name: str, description: str, stages: Optional[List[StageTemplate]]=None):
         self.name = name
         self.description = description
         self.stages = stages if stages is not None else []
@@ -76,6 +76,9 @@ class StageTemplateGroup():
 
     def add_stage(self, stage: StageTemplate):
         with self.__cache_lock:
+            if stage in self.stages:
+                return
+
             self._invalidate_cache()
             self.stages.append(stage)
 

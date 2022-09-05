@@ -1,7 +1,7 @@
 import os
 import threading
 from pathlib import Path
-from typing import Dict, Optional, Type, TypeVar, Generic, List, Callable
+from typing import Dict, Optional, Type, TypeVar, Generic, List, Callable, Union, Tuple
 
 from expkit.base.group.base import StageTemplateGroup
 from expkit.base.logger import get_logger
@@ -38,18 +38,79 @@ class RegisterDecoratorHelper(Generic[T]):
 __helper_tasks: RegisterDecoratorHelper[StageTaskTemplate] = RegisterDecoratorHelper()
 __helper_stages: RegisterDecoratorHelper[StageTemplate] = RegisterDecoratorHelper()
 __helper_stage_groups: RegisterDecoratorHelper[StageTemplateGroup] = RegisterDecoratorHelper()
+__helper_auto_groups: RegisterDecoratorHelper[Tuple[str, str, Optional[str]]] = RegisterDecoratorHelper()
 
 
-def register_task(task: Type[StageTaskTemplate], *nargs, **kwargs):
-    __helper_tasks.register(task(*nargs, **kwargs))
+def _register_obj(type: int, *cargs, **kwargs):
+    args = cargs
+
+    def decorator(obj: Type[Union[StageTaskTemplate, StageTemplate, StageTemplateGroup]]):
+        instance = None
+        if 1 <= type <= 3:
+            instance = obj(*args, **kwargs)
+            obj.__auto_discover_instance = instance
+        elif type == 4:
+            instance = getattr(obj, "__auto_discover_instance", None)
+            if instance is None:
+                LOGGER.warning(f"Cannot auto-group {obj} as it has not been registered before")
+            if not isinstance(instance, StageTemplate):
+                LOGGER.warning(f"Cannot auto-group {obj} as it is not a stage")
+
+        if type==1: # task
+            __helper_tasks.register(instance)
+        elif type==2: # stage
+            __helper_stages.register(instance)
+        elif type==3: # group
+            __helper_stage_groups.register(instance)
+        elif type==4: # auto group
+            if instance is not None:
+                stage_name = instance.name
+
+                if not (1 <= len(args) <= 2 and len(kwargs) == 0):
+                    raise ValueError("Auto-grouping requires a group name and optional description")
+
+                group_name = args[0]
+                description = None
+
+                if len(args) == 2:
+                    description = args[1]
+
+                if not isinstance(group_name, str) or (description is not None and not isinstance(description, str)):
+                    raise ValueError("Auto-grouping requires a string arguments")
+
+                __helper_auto_groups.register((group_name, stage_name, description))
+        else:
+            raise TypeError(f"Unable to register {obj} as it is not a StageTaskTemplate, StageTemplate or StageTemplateGroup")
+
+        return obj
+
+    if len(cargs) == 1 and len(kwargs) == 0 and callable(cargs[0]):
+        # no parameters for decorator
+
+        if type==4:
+            raise TypeError("Auto-grouping requires a group name")
+
+        args = ()
+        return decorator(cargs[0])
+    else:
+        # arguments provided for decorator
+        return decorator
 
 
-def register_stage(stage: Type[StageTemplate], *nargs, **kwargs):
-    __helper_stages.register(stage(*nargs, **kwargs))
+def register_task(*cargs, **kwargs):
+    return _register_obj(1, *cargs, **kwargs)
 
 
-def register_stage_group(stage_group: Type[StageTemplateGroup], *nargs, **kwargs):
-    __helper_stage_groups.register(stage_group(*nargs, **kwargs))
+def register_stage(*cargs, **kwargs):
+    return _register_obj(2, *cargs, **kwargs)
+
+
+def register_stage_group(*cargs, **kwargs):
+    return _register_obj(3, *cargs, **kwargs)
+
+
+def auto_stage_group(*cargs, **kwargs):
+    return _register_obj(4, *cargs, **kwargs)
 
 
 def auto_discover_databases(directory: Path, module_prefix: str = "expkit."):
@@ -74,7 +135,46 @@ def auto_discover_databases(directory: Path, module_prefix: str = "expkit."):
     __helper_stages.finalize(StageDatabase.get_instance().add_stage)
     __helper_stage_groups.finalize(StageGroupDatabase.get_instance().add_group)
 
-    StageGroupDatabase.get_instance().build_caches()
+    auto_group_data_raw = []
+    __helper_auto_groups.finalize(auto_group_data_raw.append)
+
+    auto_group_data: Dict[str, List[Tuple[str, Optional[str]]]] = {}
+
+    for group, stage, description in auto_group_data_raw:
+        if group not in auto_group_data:
+            auto_group_data[group] = []
+        if stage in auto_group_data[group]:
+            LOGGER.warning(f"Stage {stage} is already in group {group}")
+        auto_group_data[group].append((stage, description))
+
+    for group, data in auto_group_data.items():
+        group_obj = StageGroupDatabase.get_instance().get_group(group)
+
+        if group_obj is None:
+            descriptions = [description for _, description in data]
+            descriptions = sorted(set(filter(lambda d: d is not None, descriptions)))
+            if len(descriptions) == 0:
+                raise ValueError(f"Group {group} does not exist and cannot be auto-created as no descriptions are provided")
+            if len(descriptions) > 1:
+                LOGGER.error("Error auto-creating group {group}: multiple descriptions provided")
+                for d in descriptions:
+                    LOGGER.error(f" - {d}")
+                raise ValueError(f"Group {group} does not exist and cannot be auto-created as multiple different descriptions are provided")
+
+            description = descriptions[0]
+            group_obj = StageGroupDatabase.get_instance().add_group(StageTemplateGroup(group, description))
+
+        LOGGER.debug(f"Auto-grouping {group}")
+
+        for stage, _ in data:
+            stage_obj = StageDatabase.get_instance().get_stage(stage)
+
+            if stage_obj is None:
+                raise ValueError(f"Stage {stage} does not exist and cannot be auto-grouped")
+
+            LOGGER.debug(f" - {stage}")
+            group_obj.add_stage(stage_obj)
+
 
 
 class TaskDatabase():
@@ -82,12 +182,14 @@ class TaskDatabase():
         self.tasks: Dict[str, StageTaskTemplate] = {}
         LOGGER.debug("Created task database")
 
-    def add_task(self, task: StageTaskTemplate):
+    def add_task(self, task: StageTaskTemplate) -> StageTaskTemplate:
         assert task.name == task.name.lower(), "Only lower case task names are allowed"
         if task.name in self.tasks:
             raise ValueError(f"Task with name {task.name} already exists in the database")
         LOGGER.debug(f" - registered task {task.name}")
         self.tasks[task.name.lower()] = task
+
+        return task
 
     def get_task(self, name: str) -> Optional[StageTaskTemplate]:
         return self.tasks.get(name, None)
@@ -108,12 +210,14 @@ class StageDatabase():
         self.stages: Dict[str, StageTemplate] = {}
         LOGGER.debug("Created stage database")
 
-    def add_stage(self, stage: StageTemplate):
+    def add_stage(self, stage: StageTemplate) -> StageTemplate:
         assert stage.name == stage.name.lower(), "Only lower case stage names are allowed"
         if stage.name in self.stages:
             raise ValueError(f"Stage with name {stage.name} already exists in the database")
         LOGGER.debug(f" - registered stage {stage.name}")
         self.stages[stage.name.lower()] = stage
+
+        return stage
 
     def get_stage(self, name: str) -> Optional[StageTemplate]:
         return self.stages.get(name, None)
@@ -134,12 +238,14 @@ class StageGroupDatabase():
         self.groups: Dict[str, StageTemplateGroup] = {}
         LOGGER.debug("Created stage group database")
 
-    def add_group(self, group: StageTemplateGroup):
-        assert group.name == group.name.lower(), "Only lower case stage group names are allowed"
+    def add_group(self, group: StageTemplateGroup) -> StageTemplateGroup:
+        assert group.name == group.name.upper(), "Only upper case stage group names are allowed"
         if group.name in self.groups:
             raise ValueError(f"Stage group with name {group.name} already exists in the database")
         LOGGER.debug(f" - registered stage group {group.name}")
-        self.groups[group.name.lower()] = group
+        self.groups[group.name.upper()] = group
+
+        return group
 
     def get_group(self, name: str) -> Optional[StageTemplateGroup]:
         return self.groups.get(name, None)
@@ -154,6 +260,3 @@ class StageGroupDatabase():
             StageGroupDatabase.__instance = StageGroupDatabase()
         return StageGroupDatabase.__instance
 
-    def build_caches(self):
-        for group in self.groups.values():
-            group.build_cache()
