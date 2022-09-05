@@ -75,12 +75,12 @@ class LoadProject(StageTemplate):
     def finish_build(self, context: StageContext) -> Payload:
         assert context.get("output") is not None
 
-        return Payload(
+        return context.initial_payload.copy(
             type=PayloadType.CSHARP_PROJECT,
             content=context.get("output"))
 
     def get_supported_input_payload_types(self) -> List[PayloadType]:
         return [PayloadType.EMPTY]
 
-    def get_output_payload_type(self, input: PayloadType) -> List[PayloadType]:
+    def get_output_payload_type(self, input: PayloadType, dependencies: List[PayloadType]) -> List[PayloadType]:
         return [] if input != PayloadType.EMPTY else PayloadType.get_all_project_types()

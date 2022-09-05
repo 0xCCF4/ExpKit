@@ -32,8 +32,30 @@ class StageTemplate():
     def get_supported_input_payload_types(self) -> List[PayloadType]:
         raise NotImplementedError("Not implemented")
 
-    def get_output_payload_type(self, input: PayloadType) -> List[PayloadType]:
+    def get_output_payload_type(self, input: PayloadType, dependencies: List[PayloadType]) -> List[PayloadType]:
         raise NotImplementedError("Not implemented")
+
+    def get_supported_dependency_types(self) -> List[List[PayloadType]]:
+        raise []
+
+    def is_supporting_dependencies(self, context: StageContext) -> bool:
+        supported_all = self.get_supported_dependency_types()
+        dependencies = context.dependencies
+
+        for supported_entry in supported_all:
+            if len(supported_entry) != len(dependencies):
+                continue
+
+            ok = True
+            for a, b in zip(supported_entry, dependencies):
+                if a != b.type:
+                    ok = False
+                    break
+
+            if ok:
+                return True
+
+        return False
 
     def get_template_directory(self) -> Optional[Path]:
         file = Path(inspect.getfile(self.__class__))
@@ -64,10 +86,11 @@ class StageTemplate():
         raise NotImplementedError("Not implemented")
 
     @type_guard
-    def execute(self, payload: Payload, output_type: PayloadType, parameters: dict, build_directory: Path) -> Payload:
+    def execute(self, payload: Payload, output_type: PayloadType, dependencies: List[Payload], parameters: dict, build_directory: Path) -> Payload:
         context: StageContext = StageContext(
             initial_payload=payload,
             output_type=output_type,
+            dependencies=dependencies,
             parameters=parameters,
             build_directory=build_directory)
 
@@ -75,7 +98,9 @@ class StageTemplate():
 
         if context.initial_payload.type not in self.get_supported_input_payload_types():
             raise RuntimeError(f"Stage {self.name} does not support input payload type {context.initial_payload.type}")
-        if context.output_type not in self.get_output_payload_type(context.initial_payload.type):
+        if not self.is_supporting_dependencies(context):
+            raise RuntimeError(f"Stage {self.name} does not support dependencies types {context.dependencies}")
+        if context.output_type not in self.get_output_payload_type(context.initial_payload.type, [d.type for d in context.dependencies]):
             raise RuntimeError(f"Stage {self.name} does not support output payload type {context.output_type}")
 
         self.prepare_build(context)
@@ -83,7 +108,7 @@ class StageTemplate():
         for i, task in enumerate(self.tasks):
             self.execute_task(context, i, task)
 
-        out_payload =  self.finish_build(context)
+        out_payload = self.finish_build(context)
 
         if out_payload.type != context.output_type:
             raise RuntimeError(f"Stage {self.name} produced payload of type {out_payload.type} instead of {context.output_type}")

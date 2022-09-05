@@ -46,7 +46,7 @@
           "name": "LOAD_DEPENDENCY",
           "dependencies":  ["base"]
         },
-        { "name": "TEMPLATE_ENGINE_CSHARP" },
+        { "name": "TEMPLATE_ENGINE" },
         {
           "name": "OBFUSCATE_CSHARP",
           "config": {
@@ -75,7 +75,7 @@
           "name": "LOAD_DEPENDENCY",
           "dependencies":  ["base"]
         },
-        { "name": "TEMPLATE_ENGINE_CSHARP" },
+        { "name": "TEMPLATE_ENGINE" },
         {
           "name": "OBFUSCATE_CSHARP",
           "config": {

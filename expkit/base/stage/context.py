@@ -1,13 +1,14 @@
 from pathlib import Path
-from typing import Dict
+from typing import Dict, List
 
 from expkit.base.payload import Payload, PayloadType
 
 
 class StageContext:
-    def __init__(self, initial_payload: Payload, output_type: PayloadType, parameters: dict, build_directory: Path):
+    def __init__(self, initial_payload: Payload, output_type: PayloadType, dependencies: List[Payload], parameters: dict, build_directory: Path):
         self.initial_payload = initial_payload
         self.output_type = output_type
+        self.dependencies = dependencies
         self.parameters = parameters
         self.build_directory = build_directory
         self.data: Dict[str, any] = {}

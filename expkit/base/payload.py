@@ -1,4 +1,6 @@
+import copy
 from enum import IntEnum, auto
+from typing import Optional
 
 from expkit.base.architecture import TargetPlatform
 from expkit.base.utils.type_checking import type_guard
@@ -38,6 +40,10 @@ class PayloadType(IntEnum):
     def get_all_project_types():
         return [value for value in PayloadType if value.is_project()]
 
+    @staticmethod
+    def get_all_types():
+        return [value for value in PayloadType if value != PayloadType.UNKNOWN]
+
     def is_project(self):
         return self.name.endswith("_PROJECT")
 
@@ -56,7 +62,7 @@ class PayloadType(IntEnum):
 
 class Payload():
     @type_guard
-    def __init__(self, type: PayloadType, platform: TargetPlatform, content: bytes, meta: dict = None):
+    def __init__(self, type: PayloadType, content: bytes, meta: dict = None):
         self.type = type
         self.content = content
         self.meta = meta if meta is not None else {}
@@ -76,3 +82,16 @@ class Payload():
 
     def get_meta(self) -> dict:
         return self.meta
+
+    @type_guard
+    def copy(self, type: Optional[PayloadType] = None, content: Optional[bytes] = None, meta: Optional[dict] = None):
+        payload = Payload(self.type, self.content, copy.deepcopy(self.meta))
+
+        if type is not None:
+            payload.type = type
+        if content is not None:
+            payload.content = content
+        if meta is not None:
+            payload.meta = meta
+
+        return payload

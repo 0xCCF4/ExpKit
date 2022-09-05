@@ -13,16 +13,17 @@ from expkit.base.utils.type_checking import type_guard
 LOGGER = get_logger(__name__)
 
 
-class StageTemplateGroupCacheEntry():
-    def __init__(self, platform: Platform, architecture: Architecture, input_type: PayloadType, output_type: PayloadType, stages: List[StageTemplate]):
+class StageTemplateGroupCacheEntry:
+    def __init__(self, platform: Platform, architecture: Architecture, input_type: PayloadType, dependencies: List[PayloadType], output_type: PayloadType, stages: List[StageTemplate]):
         self.platform = platform
         self.architecture = architecture
         self.input_type = input_type
         self.output_type = output_type
+        self.dependencies = dependencies
         self.stages = stages
 
 
-class StageTemplateGroup():
+class StageTemplateGroup:
     """Representation of a platform-independent stage template group."""
 
     @type_guard
@@ -35,8 +36,8 @@ class StageTemplateGroup():
         self.__cache_lock = threading.RLock()
         self.__cache: List[StageTemplateGroupCacheEntry] = []
         self.__cache_platforms_archs: List[Tuple[Platform, Architecture]] = []
-        self.__cache_input_types: Dict[Tuple[Platform, Architecture], List[PayloadType]] = {}
-        self.__cache_output_types: Dict[Tuple[Platform, Architecture, PayloadType], List[PayloadType]] = {}
+        self.__cache_input_types: Dict[Tuple[Platform, Architecture], List[Tuple[List[PayloadType], List[PayloadType]]]] = {} # values are dependency types and output types
+        self.__cache_output_types: Dict[Tuple[Platform, Architecture, PayloadType, List[PayloadType]], List[PayloadType]] = {}
 
     def _invalidate_cache(self):
         with self.__cache_lock:
@@ -59,7 +60,7 @@ class StageTemplateGroup():
             return self.__cache_platforms_archs
 
     @property
-    def _cache_input_types(self) -> Dict[Tuple[Platform, Architecture], List[PayloadType]]:
+    def _cache_input_types(self) -> Dict[Tuple[Platform, Architecture], List[Tuple[List[PayloadType], List[PayloadType]]]]:
         with self.__cache_lock:
             if not self.__cache_valid:
                 self.__build_cache()
@@ -67,7 +68,7 @@ class StageTemplateGroup():
             return self.__cache_input_types
 
     @property
-    def _cache_output_types(self) -> Dict[Tuple[Platform, Architecture, PayloadType], List[PayloadType]]:
+    def _cache_output_types(self) -> Dict[Tuple[Platform, Architecture, PayloadType, List[PayloadType]], List[PayloadType]]:
         with self.__cache_lock:
             if not self.__cache_valid:
                 self.__build_cache()
@@ -82,13 +83,19 @@ class StageTemplateGroup():
             self._invalidate_cache()
             self.stages.append(stage)
 
-    def _get_cache_entry(self, platform: Platform, architecture: Architecture, input_type: PayloadType, output_type: PayloadType) -> Optional[List[StageTemplate]]:
+    def _get_cache_entry(self, platform: Platform, architecture: Architecture, input_type: PayloadType, dependencies: List[PayloadType], output_type: PayloadType) -> Optional[List[StageTemplate]]:
         assert platform.is_single()
         assert architecture.is_single()
 
         for entry in self._cache:
             if entry.platform == platform and entry.architecture == architecture and entry.input_type == input_type and entry.output_type == output_type:
-                return entry.stages
+                ok = True
+                for etype, dtype in zip(entry.dependencies, dependencies):
+                    if etype != dtype:
+                        ok = False
+                        break
+                if ok:
+                    return entry.stages
         return None
 
     def __build_cache(self):
@@ -97,6 +104,7 @@ class StageTemplateGroup():
             self.__cache_valid = True
             self.__cache_platforms_archs = []
             self.__cache_input_types = {}
+            self.__cache_dependency_types = {}
             self.__cache_output_types = {}
 
             for stage in self.stages:
@@ -113,24 +121,26 @@ class StageTemplateGroup():
                     self.__cache_input_types[system] = list(set(self.__cache_input_types[system]))
 
                     for input_type in input_types:
-                        system = (platform, arch, input_type)
+                        for dependency_set in stage.get_supported_dependency_types():
+                            system = (platform, arch, input_type)
 
-                        output_types = stage.get_output_payload_type(input_type)
+                            output_types = stage.get_output_payload_type(input_type, dependency_set)
 
-                        if not system in self.__cache_output_types:
-                            self.__cache_output_types[system] = []
+                            if not system in self.__cache_output_types:
+                                self.__cache_output_types[system] = []
 
-                        self.__cache_output_types[system].extend(output_types)
-                        self.__cache_output_types[system] = list(set(self.__cache_output_types[system]))
+                            input_combi = (dependency_set, output_types)
+                            if input_combi not in self.__cache_output_types[system]:
+                                self.__cache_output_types[system].append(input_combi)
 
-                        for output_type in stage.get_output_payload_type(input_type):
-                            cache_entries = self._get_cache_entry(platform, arch, input_type, output_type)
+                            for output_type in stage.get_output_payload_type(input_type, dependency_set):
+                                cache_entries = self._get_cache_entry(platform, arch, input_type, dependency_set, output_type)
 
-                            if cache_entries is None:
-                                cache_entries = []
-                                self.__cache.append(StageTemplateGroupCacheEntry(platform, arch, input_type, output_type, cache_entries))
+                                if cache_entries is None:
+                                    cache_entries = []
+                                    self.__cache.append(StageTemplateGroupCacheEntry(platform, arch, input_type, dependency_set, output_type, cache_entries))
 
-                            cache_entries.append(stage)
+                                cache_entries.append(stage)
 
             self.__cache_platforms_archs = list(set(self.__cache_platforms_archs))
 
@@ -143,17 +153,17 @@ class StageTemplateGroup():
 
         return self._cache_input_types.get((platform, architecture), [])
 
-    def get_output_payload_type(self, platform: Platform, architecture: Architecture, input_type: PayloadType) -> List[PayloadType]:
+    def get_output_payload_type(self, platform: Platform, architecture: Architecture, input_type: PayloadType, dependencies: List[PayloadType]) -> List[PayloadType]:
         assert platform.is_single()
         assert architecture.is_single()
 
-        return self.__cache_output_types.get((platform, architecture, input_type), [])
+        return self.__cache_output_types.get((platform, architecture, input_type, dependencies), [])
 
-    def get_stage(self, platform: Platform, architecture: Architecture, input_type: PayloadType, output_type: PayloadType) -> Optional[StageTemplate]:
+    def get_stage(self, platform: Platform, architecture: Architecture, input_type: PayloadType, dependencies: List[PayloadType], output_type: PayloadType) -> Optional[StageTemplate]:
         assert platform.is_single()
         assert architecture.is_single()
 
-        stages = self._get_cache_entry(platform, architecture, input_type, output_type)
+        stages = self._get_cache_entry(platform, architecture, input_type, dependencies, output_type)
 
         if len(stages) <= 0:
             return None
@@ -161,6 +171,15 @@ class StageTemplateGroup():
             return stages[0]
         else:
             # Todo: Later perhaps allow function overwrite to chose desired stage
+            LOGGER.error(f"Multiple stages found for group {self.name} query")
+            LOGGER.error(f" - Platform: {platform}")
+            LOGGER.error(f" - Architecture: {architecture}")
+            LOGGER.error(f" - Input Type: {input_type}")
+            LOGGER.error(f" - Dependencies: {dependencies}")
+            LOGGER.error(f" - Output Type: {output_type}")
+            LOGGER.error(f" - Stages found:")
+            for stage in stages:
+                LOGGER.error(f"   - {stage.name}")
             raise Exception("Multiple stages support the same platform-architecture-input-output combination.")
 
     @type_guard
@@ -181,6 +200,8 @@ class StageTemplateGroup():
             raise Exception("Stage did not produce the expected output type.")
 
         LOGGER.debug(f"Executed stage group {self.name} ({payload.type} -> {output_type}) on {platform} {architecture}")
+
+        return payload
 
     def __str__(self):
         return self.name
