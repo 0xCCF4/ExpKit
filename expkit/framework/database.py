@@ -3,6 +3,7 @@ import threading
 from pathlib import Path
 from typing import Dict, Optional, Type, TypeVar, Generic, List, Callable, Union, Tuple
 
+from expkit.base.command.base import CommandTemplate
 from expkit.base.group.base import StageTemplateGroup
 from expkit.base.logger import get_logger
 from importlib import import_module
@@ -20,7 +21,7 @@ class RegisterDecoratorHelper(Generic[T]):
         self._lock = threading.Lock()
         self.finished = False
 
-    def finalize(self, func: Callable[[T], None]):
+    def finalize(self, func: Callable[[T], any]):
         with self._lock:
             if self.finished and len(self._registered) > 0:
                 raise RuntimeError("RegisterAnnotationHelper is finalized")
@@ -39,14 +40,14 @@ __helper_tasks: RegisterDecoratorHelper[StageTaskTemplate] = RegisterDecoratorHe
 __helper_stages: RegisterDecoratorHelper[StageTemplate] = RegisterDecoratorHelper()
 __helper_stage_groups: RegisterDecoratorHelper[StageTemplateGroup] = RegisterDecoratorHelper()
 __helper_auto_groups: RegisterDecoratorHelper[Tuple[str, str, Optional[str]]] = RegisterDecoratorHelper()
-
+__helper_commands: RegisterDecoratorHelper[CommandTemplate] = RegisterDecoratorHelper()
 
 def _register_obj(type: int, *cargs, **kwargs):
     args = cargs
 
-    def decorator(obj: Type[Union[StageTaskTemplate, StageTemplate, StageTemplateGroup]]):
+    def decorator(obj: Type[Union[StageTaskTemplate, StageTemplate, StageTemplateGroup, CommandTemplate]]):
         instance = None
-        if 1 <= type <= 3:
+        if 1 <= type <= 3 or type == 5:
             instance = obj(*args, **kwargs)
             obj.__auto_discover_instance = instance
         elif type == 4:
@@ -79,8 +80,10 @@ def _register_obj(type: int, *cargs, **kwargs):
                     raise ValueError("Auto-grouping requires a string arguments")
 
                 __helper_auto_groups.register((group_name, stage_name, description))
+        elif type==5: # command
+            __helper_commands.register(instance)
         else:
-            raise TypeError(f"Unable to register {obj} as it is not a StageTaskTemplate, StageTemplate or StageTemplateGroup")
+            raise TypeError(f"Unable to register {obj} as it is not a StageTaskTemplate, StageTemplate, StageTemplateGroup, CommandTemplate or AutoGroup")
 
         return obj
 
@@ -175,6 +178,17 @@ def auto_discover_databases(directory: Path, module_prefix: str = "expkit."):
             LOGGER.debug(f" - {stage}")
             group_obj.add_stage(stage_obj)
 
+    commands_buffer: List[CommandTemplate] = []
+    __helper_commands.finalize(commands_buffer.append)
+
+    iteration = 0
+    while len(commands_buffer) <= 0 and iteration < 3:
+        index = 0
+        while index < len(commands_buffer):
+            cmd = commands_buffer[index]
+            if "." not in cmd.name:
+                # TODO
+                CommandDatabase.get_instance().add_command(cmd)
 
 
 class TaskDatabase():
