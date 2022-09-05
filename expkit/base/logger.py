@@ -1,5 +1,6 @@
 import logging
 import sys
+import threading
 from pathlib import Path
 from typing import Optional
 
@@ -9,11 +10,25 @@ __uninitialized_loggers = []
 
 
 class ExitOnExceptionHandler(logging.StreamHandler):
-    def emit(self, record):
+    def emit(self, record: logging.LogRecord):
         if record.levelno in (logging.CRITICAL,):
             # do not remove as other parts of the codebase rely on this
             logging.shutdown()
             raise SystemExit(-1)
+
+
+class SynchronizedStreamHandler(logging.StreamHandler):
+
+    __current_stream = None
+    __lock = threading.Lock()
+
+    def emit(self, record: logging.LogRecord):
+        handler = SynchronizedStreamHandler
+        with self.__lock:
+            if self.stream != handler.__current_stream and handler.__current_stream is not None:
+                handler.__current_stream.flush()
+            handler.__current_stream = self.stream
+            super().emit(record)
 
 
 def get_logger(context: str) -> logging.Logger:
@@ -41,12 +56,12 @@ def init_global_logging(log_file: Optional[Path], file_logging_level:int=logging
     formatter_ch_stdout = logging.Formatter(fmt='[%(levelname)s] [%(name)s] %(message)s')
     formatter_ch_stderr = logging.Formatter(fmt='[%(levelname)s] [%(name)s:%(lineno)d] %(message)s')
 
-    ch_out = logging.StreamHandler(stream=sys.stdout)
+    ch_out = SynchronizedStreamHandler(stream=sys.stdout)
     ch_out.setLevel(console_logging_level)
     ch_out.setFormatter(formatter_ch_stdout)
     ch_out.addFilter(lambda record: record.levelno <= logging.INFO)
 
-    ch_err = logging.StreamHandler(stream=sys.stdout)
+    ch_err = SynchronizedStreamHandler(stream=sys.stderr)
     ch_err.setLevel(logging.WARNING)
     ch_err.setFormatter(formatter_ch_stderr)
 

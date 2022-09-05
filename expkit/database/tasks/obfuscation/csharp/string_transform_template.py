@@ -10,6 +10,7 @@ from expkit.base.stage.base import StageTemplate
 from expkit.base.task.base import StageTaskTemplate, TaskOutput
 from expkit.base.utils.base import error_on_fail
 from expkit.base.utils.type_checking import check_dict_types
+from expkit.database.tasks.general.utils.abstract_string_replace import AbstractStringReplace
 from expkit.framework.database import register_task
 
 def __transform_base64(input: str) -> str:
@@ -33,14 +34,13 @@ STATUS_AT_STRING = 2
 
 
 @register_task
-class CSharpStringTransformTemplateTask(StageTaskTemplate):
+class CSharpStringTransformTemplateTask(AbstractStringReplace):
     def __init__(self):
         super().__init__(
             name="tasks.obfuscation.csharp.string_transform_template",
             description="Transforms all strings within CSharp source code to prevent signature detection of used strings.",
             platform=TargetPlatform.ALL,
             required_parameters={
-                "files": List[Tuple[Path, Path]],  # target, origin - mapping from input to output files
                 "OBF_STRING_ENCODING": Optional[str]
             } 
         )
@@ -48,30 +48,16 @@ class CSharpStringTransformTemplateTask(StageTaskTemplate):
         self.__status: int = 0
         self.__transform_func = None
 
-    def execute(self, parameters: dict, build_directory: Path, stage: StageTemplate) -> TaskOutput:
-        error_on_fail(check_dict_types(parameters, self.required_parameters), "Invalid parameters for task:")
+    def transform_source(self, source: str, parameters: dict) -> str:
+        method = parameters.get("OBF_STRING_ENCODING", "base64")
 
-        for target_path, origin_path in parameters["files"]:
+        transform = TRANSFORMATIONS.get(method, None)
+        if transform is None:
+            LOGGER.error(f"Unknown string encoding {method}")
+            raise ValueError(f"Unknown string encoding {method}")
 
-            if not origin_path.exists() or not origin_path.is_file():
-                LOGGER.error(f"Source file {origin_path} does not exist")
-                return TaskOutput(success=False)
-
-            if target_path.exists() and target_path.is_file():
-                LOGGER.warning(f"Target source file {target_path} already exists")
-
-            origin_source = origin_path.read_text("utf-8")
-
-            transform = TRANSFORMATIONS.get(parameters.get("OBF_STRING_ENCODING", "base64"), None)
-            if transform is None:
-                LOGGER.error(f"Unknown string encoding {parameters.get('OBF_STRING_ENCODING', 'base64')}")
-                return TaskOutput(success=False)
-
-            LOGGER.debug(f"Transforming {origin_path} to {target_path}")
-            target_source = self._transform(origin_source, transform)
-
-            target_path.write_text(target_source, "utf-8")
-            return TaskOutput(success=True)
+        LOGGER.debug(f"Transforming strings using {method}")
+        return self._transform(source, transform)
 
     def _transform(self, source: str, transform: Callable[[str], str]) -> str:
         with self._lock:

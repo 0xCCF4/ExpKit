@@ -5,7 +5,7 @@ from expkit.base.payload import Payload, PayloadType
 from expkit.base.stage.base import StageTemplate
 from expkit.base.stage.context import StageContext
 from expkit.base.task.base import StageTaskTemplate
-from expkit.framework.database import register_stage, , auto_stage_group
+from expkit.framework.database import register_stage, auto_stage_group
 
 
 @auto_stage_group("LOAD_DEPENDENCY", "Loads another artifact as dependency.")

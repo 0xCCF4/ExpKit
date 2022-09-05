@@ -75,10 +75,12 @@ class Platform(IntFlag):
     LINUX = 2
     MACOS = 4
 
+    DUMMY = 8
+
     UNKNOWN = 0
     NONE = UNKNOWN
 
-    ALL = WINDOWS | LINUX | MACOS
+    ALL = WINDOWS | LINUX | MACOS | DUMMY
 
     @staticmethod
     def get_system_platform() -> "Platform":
