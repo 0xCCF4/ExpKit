@@ -116,6 +116,10 @@ def auto_stage_group(*cargs, **kwargs):
     return _register_obj(4, *cargs, **kwargs)
 
 
+def register_command(*cargs, **kwargs):
+    return _register_obj(5, *cargs, **kwargs)
+
+
 def auto_discover_databases(directory: Path, module_prefix: str = "expkit."):
     LOGGER.debug(f"Discovering database entries in {directory}")
 
@@ -175,20 +179,55 @@ def auto_discover_databases(directory: Path, module_prefix: str = "expkit."):
             if stage_obj is None:
                 raise ValueError(f"Stage {stage} does not exist and cannot be auto-grouped")
 
-            LOGGER.debug(f" - {stage}")
+            LOGGER.debug(f" - grouping {stage}")
             group_obj.add_stage(stage_obj)
 
     commands_buffer: List[CommandTemplate] = []
     __helper_commands.finalize(commands_buffer.append)
+    root_cmd = CommandDatabase.get_instance()
+
+    all_cmds = [root_cmd]
 
     iteration = 0
-    while len(commands_buffer) <= 0 and iteration < 3:
+    while len(commands_buffer) > 0 and iteration < 3:
         index = 0
         while index < len(commands_buffer):
             cmd = commands_buffer[index]
-            if "." not in cmd.name:
-                # TODO
-                CommandDatabase.get_instance().add_command(cmd)
+            found_parent = None
+            for parent in all_cmds:
+                if parent.can_be_attached_as_child(cmd):
+                    found_parent = parent
+            if found_parent is not None:
+                found_parent.add_child_command(cmd)
+                all_cmds.append(cmd)
+                del commands_buffer[index]
+                iteration = 0
+            else:
+                index += 1
+        iteration += 1
+
+    cmd_tree = [root_cmd]
+
+    LOGGER.debug("Discovered command tree:")
+    while len(cmd_tree) > 0:
+        cmd = cmd_tree.pop(0)
+        cmd_tree.extend(cmd.get_children(recursive=False, order_child_first=True))
+
+        level = len(cmd.name.split("."))
+        prepend = " " * (level - 1) * 2
+        name = "<ROOT>" if cmd == root_cmd else cmd.name.split(".")[-1]
+
+        LOGGER.debug(f"{prepend}+- {name}")
+
+    if len(commands_buffer) > 0:
+        LOGGER.error("Unable to attach the following commands to the command tree:")
+        for cmd in commands_buffer:
+            LOGGER.error(f" - {cmd.name}")
+        raise ValueError("Unable to attach some commands to the command tree")
+
+    for cmd in root_cmd.get_children(recursive=True, order_child_first=False):
+        cmd.finalize()
+    root_cmd.finalize()
 
 
 class TaskDatabase():
@@ -274,3 +313,14 @@ class StageGroupDatabase():
             StageGroupDatabase.__instance = StageGroupDatabase()
         return StageGroupDatabase.__instance
 
+
+class CommandDatabase():
+    def __init__(self):
+        LOGGER.debug("Created command database")
+
+    __instance: CommandTemplate = None
+    @staticmethod
+    def get_instance() -> CommandTemplate:
+        if CommandDatabase.__instance is None:
+            CommandDatabase.__instance = CommandTemplate("", 0, "<ROOT>")
+        return CommandDatabase.__instance

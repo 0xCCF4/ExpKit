@@ -71,7 +71,7 @@ def check_type(value: any, expected_type: Type, caller_module=None, caller_local
             if not isinstance(value, tuple):
                 return False, f"{type_err_prefix}.Tuple", f"{type(value)} is not a tuple"
 
-            if len(args) == 0:
+            if len(args) == 0 or len(value) == 0:
                 return True, "", ""
 
             assert len(args) == len(value)

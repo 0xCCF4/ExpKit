@@ -42,6 +42,7 @@ class CSharpObfuscationStage(StageTemplate):
 
 
             # TODO STUFF
+            pass
 
 
         elif task.name == "tasks.general.utils.tar_folder":

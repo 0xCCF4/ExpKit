@@ -5,32 +5,20 @@ import sys
 import textwrap
 from json import JSONDecodeError
 from pathlib import Path
-from typing import Optional, List
+from typing import Optional, List, Tuple
 
+from expkit.base.command.argparse_cmd_help import CommandHelpFormatter
+from expkit.base.command.base import CommandOptions
 from expkit.base.logger import get_logger, init_global_logging
-from expkit.framework.database import TaskDatabase, auto_discover_databases, StageGroupDatabase, StageDatabase
+from expkit.framework.database import TaskDatabase, auto_discover_databases, StageGroupDatabase, StageDatabase, \
+    CommandDatabase
 from expkit.framework.parser import ConfigParser
 
 LOGGER = None
 
 
-def main(config: dict, artifacts: Optional[List[str]], output_directory: Optional[Path], num_threads: int):
-
-
-    parser = ConfigParser()
-    parsed = parser.parse(config, artifacts)
-
-    print(parser.get_build_plan())
-
-    pass
-
-
-def main_help(type: Optional[str] = None, name: Optional[str] = None):
-    pass
-
-
-def entry():
-    parser = argparse.ArgumentParser(description="TWINSEC exploit building framework", formatter_class=argparse.RawTextHelpFormatter)
+def main():
+    parser = argparse.ArgumentParser(description="TWINSEC exploit building framework", formatter_class=CommandHelpFormatter)
 
     parser.add_argument("-v", "--verbose", action="store_true", help="verbose output", default=False)
     parser.add_argument("-d", "--debug", action="store_true", help="debug output", default=False)
@@ -101,9 +89,7 @@ def entry():
     expkit_dir = Path(__file__).parent.parent
     LOGGER.info("Gathering all exploit chain modules")
     auto_discover_databases(expkit_dir)  # must only be called once
-    LOGGER.info(f"Found {len(StageGroupDatabase.get_instance())} groups, {len(StageDatabase.get_instance())} stages, {len(TaskDatabase.get_instance())} tasks")
-
-
+    LOGGER.info(f"Found {len(StageGroupDatabase.get_instance())} groups, {len(StageDatabase.get_instance())} stages, {len(TaskDatabase.get_instance())} tasks, {len(CommandDatabase.get_instance())} commands")
 
     # Checking arguments
     LOGGER.debug("Checking arguments")
@@ -113,9 +99,11 @@ def entry():
         LOGGER.debug(f"Checking if file {args.file} exists")
         config_file = Path(args.file)
         if not config_file.exists():
-            LOGGER.critical(f"Config file {config_file} does not exist")
-        if not config_file.is_file():
-            LOGGER.critical(f"Config file {config_file} is not a file")
+            LOGGER.warning(f"Config file {config_file.absolute()} does not exist")
+            config_file = None
+        elif not config_file.is_file():
+            LOGGER.warning(f"Config file {config_file.absolute()} is not a file")
+            config_file = None
         LOGGER.debug("Config file exists")
 
     artifacts = None
@@ -133,28 +121,41 @@ def entry():
         LOGGER.debug("Output directory exists")
 
     if config_file is None:
-        LOGGER.debug("No config file specified. Using default file_path")
+        LOGGER.info("No config file specified. Using default file_path")
         config_file = Path("config.json")
 
         if not config_file.exists():
-            LOGGER.critical(f"Config file {config_file} does not exist")
-        if not config_file.is_file():
-            LOGGER.critical(f"Config file {config_file} is not a file")
+            LOGGER.warning(f"Config file {config_file} does not exist")
+            config_file = None
+        elif not config_file.is_file():
+            LOGGER.warning(f"Config file {config_file} is not a file")
+            config_file = None
 
-    try:
-        with open(config_file, "r") as f:
-            config = json.load(f)
-    except JSONDecodeError as e:
-        LOGGER.critical(f"Error parsing config file {config_file}: {e}")
-    except Exception as e:
-        LOGGER.critical(f"Failed to load config file {config_file}")
-        raise e
+    config = None
+    if config_file is not None:
+        try:
+            with open(config_file, "r") as f:
+                config = json.load(f)
+        except JSONDecodeError as e:
+            LOGGER.critical(f"Error parsing config file {config_file}: {e}")
+        except Exception as e:
+            LOGGER.critical(f"Failed to load config file {config_file}")
+            raise e
 
-    # Execute main
+    # Executing command
     LOGGER.debug("Starting main")
-    main(config, artifacts, output_dir, args.threads, args.command)
+    m = CommandDatabase.get_instance().get_command(*args.command)
+    if m is None:
+        LOGGER.critical(f"Unknown command. Use 'help' or '--help' to get a list of available commands")
+    else:
+        cmd, cmd_args = m
+        if not cmd.execute(CommandOptions(config, artifacts, output_dir, args.threads), *cmd_args):
+            print()
+            parser.format_help()
+            print()
+
     LOGGER.debug("Exiting...")
 
 
 if __name__ == "__main__":
-    entry()
+    main()
