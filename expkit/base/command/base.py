@@ -1,17 +1,46 @@
 import textwrap
+import bisect
 from pathlib import Path
 from typing import Optional, List, Union, Tuple
 
 from expkit.base.utils.base import error_on_fail
 from expkit.base.utils.type_checking import type_guard, check_type
 
-CMD_ARGS_NONE = ""
-CMD_ARGS_ONE = "1"
-CMD_ARGS_MANY = "*"
-CMD_ARG_MORE_THAN_ONE = "+"
+
+class CommandArgumentCount:
+    __slots__ = ("min", "max")
+
+    def __init__(self, min: int, max: Union[int, str, type(None)] = None):
+        if max is None:
+            max = min
+
+        if isinstance(max, str) and max != "*":
+            raise ValueError(f"Invalid argument count string: {max}")
+
+        self.min = min
+        self.max = max if not str(max).isnumeric() else int(max)
+
+        assert not str(max).isnumeric() or isinstance(self.max, int)
+
+    def __repr__(self):
+        return f"CommandArgumentCount(min={self.min}, max={self.max})"
+
+    def __eq__(self, other):
+        if not isinstance(other, CommandArgumentCount):
+            return False
+
+        return self.min == other.min and self.max == other.max
+
+    def matched(self, argument_count: int) -> bool:
+        if isinstance(self.max, int):
+            return self.min <= argument_count <= self.max
+        elif self.max == "*":
+            return self.min <= argument_count
+        else:
+            raise RuntimeError(f"Invalid argument count: {self.max}")
 
 
-class CommandOptions():
+class CommandOptions:
 
     def __init__(self, config: Optional[dict], artifacts: Optional[List[str]], output_directory: Optional[Path], num_threads: int):
         self.config = config
@@ -22,20 +51,14 @@ class CommandOptions():
 
 class CommandTemplate:
     @type_guard
-    def __init__(self, name: str, parameters: Union[str, int], description: str):
+    def __init__(self, name: str, argument_count: CommandArgumentCount, description_short: str, description_long: Optional[str] = None):
         self.name = name
-        self.description = description
-        parameters = str(parameters)
-        self.parameters = parameters
+        self.description_short = description_short
+        self.description_long = description_long
+        self.argument_count = argument_count
 
         self.children = []
-
-        if not (parameters.isnumeric() or
-                parameters == CMD_ARGS_NONE or
-                parameters == CMD_ARGS_ONE or
-                parameters == CMD_ARGS_MANY or
-                parameters == CMD_ARG_MORE_THAN_ONE):
-            raise ValueError(f"Invalid numer of parameters: {parameters}")
+        self.parent: Optional[CommandTemplate] = None
 
     def _execute_command(self, options: CommandOptions, *args) -> bool:
         """Execute the command. Return False to show help."""
@@ -48,7 +71,7 @@ class CommandTemplate:
         return None
 
     def execute(self, options: CommandOptions, *args) -> bool:
-        error_on_fail(check_type(args, Tuple[str]), "Invalid arguments")
+        error_on_fail(check_type(list(args), List[str]), "Invalid arguments")
 
         m = self.get_command(*args)
         if m is None:
@@ -65,8 +88,11 @@ class CommandTemplate:
             raise ValueError(f"Command {child.name} must be a direct child of {self.name}")
         if child.name[len(self.name)] != "." and "." not in child.name[len(self.name)+1:]:
             raise ValueError(f"Command {child.name} must be a direct child of {self.name}")
+        if child.parent is not None:
+            raise ValueError(f"Command {child.name} is already attached to {child.parent.name}")
 
-        self.children.append(child)
+        child.parent = self
+        bisect.insort_left(self.children, child)
 
     def get_real_name(self):
         return self.name.split(".")[-1]
@@ -91,8 +117,8 @@ class CommandTemplate:
             return False
         return True
 
-    def get_command(self, *args) -> Optional[Tuple["CommandTemplate", Tuple[any]]]:
-        error_on_fail(check_type(args, Tuple[str]), "Invalid arguments")
+    def get_command(self, *args) -> Optional[Tuple["CommandTemplate", tuple]]:
+        error_on_fail(check_type(list(args), List[str]), "Invalid arguments")
 
         # Get child commands fist
         if len(args) > 0:
@@ -102,22 +128,8 @@ class CommandTemplate:
                 return cmd.get_command(*args[1:])
 
         # Else check if this command is working
-        if self.parameters.isnumeric():
-            num = int(self.parameters)
-            if len(args) == num:
-                return self, args
-        elif self.parameters == CMD_ARGS_NONE:
-            if len(args) == 0:
-                return self, args
-        elif self.parameters == CMD_ARGS_ONE:
-            if len(args) == 1:
-                return self, args
-        elif self.parameters == CMD_ARGS_MANY:
-            if len(args) >= 0:
-                return self, args
-        elif self.parameters == CMD_ARG_MORE_THAN_ONE:
-            if len(args) > 1:
-                return self, args
+        if self.argument_count.matched(len(args)):
+            return self, args
 
         return None
 
@@ -129,7 +141,17 @@ class CommandTemplate:
         pass
 
     def get_pretty_description_header(self) -> str:
-        return f"{self.get_real_name()}"
+        return f"{' '.join(self.name[1:].split('.'))}"
 
-    def get_pretty_description(self, indent: int = 2, max_width: int = 80) -> str:
-        return textwrap.fill(f"{self.get_pretty_description_header()}\n{self.description}", max_width, subsequent_indent=" " * indent)
+    def get_pretty_description(self, indent: int = 4, max_width: int = 80, short_description: bool = True) -> str:
+        text = self.description_short if short_description else self.description_long
+        if text is None and not short_description:
+            text = self.description_short
+        if text is None:
+            text = "<no description provided>"
+        return f"{self.get_pretty_description_header()}\n{textwrap.fill(text, max_width, initial_indent=' ' * indent, subsequent_indent=' ' * indent)}"
+
+    # For bisect.insort_left
+    def __lt__(self, other):
+        return self.get_real_name() < other.get_real_name()
+

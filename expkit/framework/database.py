@@ -3,7 +3,7 @@ import threading
 from pathlib import Path
 from typing import Dict, Optional, Type, TypeVar, Generic, List, Callable, Union, Tuple
 
-from expkit.base.command.base import CommandTemplate
+from expkit.base.command.base import CommandTemplate, CommandArgumentCount
 from expkit.base.group.base import StageTemplateGroup
 from expkit.base.logger import get_logger
 from importlib import import_module
@@ -206,13 +206,10 @@ def auto_discover_databases(directory: Path, module_prefix: str = "expkit."):
                 index += 1
         iteration += 1
 
-    cmd_tree = [root_cmd]
+    cmd_tree = root_cmd.get_children(recursive=True, order_child_first=True)
 
     LOGGER.debug("Discovered command tree:")
-    while len(cmd_tree) > 0:
-        cmd = cmd_tree.pop(0)
-        cmd_tree.extend(cmd.get_children(recursive=False, order_child_first=True))
-
+    for cmd in cmd_tree:
         level = len(cmd.name.split("."))
         prepend = " " * (level - 1) * 2
         name = "<ROOT>" if cmd == root_cmd else cmd.name.split(".")[-1]
@@ -322,5 +319,5 @@ class CommandDatabase():
     @staticmethod
     def get_instance() -> CommandTemplate:
         if CommandDatabase.__instance is None:
-            CommandDatabase.__instance = CommandTemplate("", 0, "<ROOT>")
+            CommandDatabase.__instance = CommandTemplate("", CommandArgumentCount(0,0), "<ROOT>")
         return CommandDatabase.__instance

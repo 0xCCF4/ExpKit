@@ -5,7 +5,8 @@ from pathlib import Path
 from typing import Optional
 
 __instance = None
-__handlers = []
+__handlers_logging = []
+__handlers_stdout = []
 __uninitialized_loggers = []
 
 
@@ -31,22 +32,26 @@ class SynchronizedStreamHandler(logging.StreamHandler):
             super().emit(record)
 
 
-def get_logger(context: str) -> logging.Logger:
+def get_logger(context: str, direct_stdout: bool = False) -> logging.Logger:
+    if direct_stdout:
+        context = context + "_stdout"
+
     logger = logging.getLogger(context)
     logger.setLevel(logging.DEBUG)
     logger.propagate = False
 
     if __instance is None:
-        __uninitialized_loggers.append(logger)
+        __uninitialized_loggers.append((logger, direct_stdout))
     else:
-        for h in __handlers:
-             logger.addHandler(h)
+        handlers = __handlers_logging if not direct_stdout else __handlers_stdout
+        for handler in handlers:
+            logger.addHandler(handler)
     
     return logger
 
 
 def init_global_logging(log_file: Optional[Path], file_logging_level:int=logging.INFO, console_logging_level:int=logging.WARNING):
-    global __handlers, __instance
+    global __handlers_logging, __handlers_stdout, __instance
     if __instance is not None:
         raise RuntimeError("Global logging already initialized")
 
@@ -65,28 +70,37 @@ def init_global_logging(log_file: Optional[Path], file_logging_level:int=logging
     ch_err.setLevel(logging.WARNING)
     ch_err.setFormatter(formatter_ch_stderr)
 
-    __handlers.append(ch_out)
-    __handlers.append(ch_err)
+    __handlers_logging.append(ch_out)
+    __handlers_logging.append(ch_err)
+
+    ch_out_print = SynchronizedStreamHandler(stream=sys.stdout)
+    ch_out_print.setLevel(logging.DEBUG)
+
+    __handlers_stdout.append(ch_out_print)
 
     if log_file is not None:
         fh = logging.FileHandler(log_file)
         fh.setLevel(file_logging_level)
         fh.setFormatter(formatter_file)
 
-        __handlers.append(fh)
+        __handlers_logging.append(fh)
+        __handlers_stdout.append(fh)
 
     # do not remove as other parts of the codebase rely on this
     ext = ExitOnExceptionHandler()
     ext.setFormatter(formatter_ch_stderr)
-    __handlers.append(ext)
+    __handlers_logging.append(ext)
+    __handlers_stdout.append(ext)
 
     root = logging.getLogger()
     # do not remove as other parts of the codebase rely on this
     root.addHandler(ext)
 
     while len(__uninitialized_loggers) > 0:
-        logger = __uninitialized_loggers.pop()
-        
-        for h in __handlers:
-            logger.addHandler(h)
+        logger, direct_stdout = __uninitialized_loggers.pop()
+
+        handlers = __handlers_logging if not direct_stdout else __handlers_stdout
+        for handler in handlers:
+            logger.addHandler(handler)
+
     

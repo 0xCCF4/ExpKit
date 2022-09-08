@@ -7,7 +7,6 @@ from json import JSONDecodeError
 from pathlib import Path
 from typing import Optional, List, Tuple
 
-from expkit.base.command.argparse_cmd_help import CommandHelpFormatter
 from expkit.base.command.base import CommandOptions
 from expkit.base.logger import get_logger, init_global_logging
 from expkit.framework.database import TaskDatabase, auto_discover_databases, StageGroupDatabase, StageDatabase, \
@@ -15,10 +14,13 @@ from expkit.framework.database import TaskDatabase, auto_discover_databases, Sta
 from expkit.framework.parser import ConfigParser
 
 LOGGER = None
+PRINT = None
 
 
 def main():
-    parser = argparse.ArgumentParser(description="TWINSEC exploit building framework", formatter_class=CommandHelpFormatter)
+    global LOGGER, PRINT
+
+    parser = argparse.ArgumentParser(description="TWINSEC exploit building framework", formatter_class=argparse.RawTextHelpFormatter)
 
     parser.add_argument("-v", "--verbose", action="store_true", help="verbose output", default=False)
     parser.add_argument("-d", "--debug", action="store_true", help="debug output", default=False)
@@ -31,29 +33,11 @@ def main():
                         help=textwrap.dedent('''\
                             Command to execute (default: build)
                             
-                            build
-                                Builds the exploit configuration defined in the config.json file
+                            help
+                                Print help about commands to execute.
                                 
-                            server [port] [ip]
-                                Starts a webserver to build the exploit configuration defined in
-                                the config.json file on the fly whenever a request is received.
-                                The request must be a GET request with the following parameters:
-                                    - platform: The target platform (WINDOWS, LINUX, MACOS, ...)
-                                    - arch: The target architecture (i386, AMD64, ARM, ARM64, ...)
-                                    - target: The target artifact to build from the config.json file
-                                The response will the BASE64 encoded payload. If the payload is
-                                platform independent, the platform and arch parameters should be
-                                set to "DUMMY". An error will be signaled using the status code
-                                500. A json object with an error message will be returned. The
-                                server will listen on port 8080 and bound to ip 0.0.0.0 by default.
-                            
-                            help [stage|task|group] [name]
-                                Print help for a stage, task or group. If no name is given, a list
-                                of all stages, tasks or groups is printed.
-                                When a name is given, the help for the specific stage, task or group
-                                is printed. This includes a description and a list of available config
-                                parameters.
-                                
+                            help cmd <command>
+                                Print help about a given command.
                             '''), default=["build"])
 
     # Parse arguments
@@ -78,6 +62,7 @@ def main():
 
     init_global_logging(log_file, file_logging_level, console_logging_level)
     LOGGER = get_logger("main")
+    PRINT = get_logger("main", True)
     LOGGER.info("Hello world")
 
     if args.verbose:
@@ -146,13 +131,11 @@ def main():
     LOGGER.debug("Starting main")
     m = CommandDatabase.get_instance().get_command(*args.command)
     if m is None:
-        LOGGER.critical(f"Unknown command. Use 'help' or '--help' to get a list of available commands")
+        LOGGER.critical(f"Unknown command '{' '.join(args.command)}'. Use 'help' or '--help' to get a list of available commands")
     else:
         cmd, cmd_args = m
         if not cmd.execute(CommandOptions(config, artifacts, output_dir, args.threads), *cmd_args):
-            print()
-            parser.format_help()
-            print()
+            PRINT.info(f"\n{parser.format_help()}\n")
 
     LOGGER.debug("Exiting...")
 
