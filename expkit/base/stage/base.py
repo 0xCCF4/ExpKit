@@ -36,7 +36,7 @@ class StageTemplate():
         raise NotImplementedError("Not implemented")
 
     def get_supported_dependency_types(self) -> List[List[PayloadType]]:
-        raise []
+        return [[]]
 
     def is_supporting_dependencies(self, context: StageContext) -> bool:
         supported_all = self.get_supported_dependency_types()

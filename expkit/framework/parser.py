@@ -8,7 +8,7 @@ from expkit.base.logger import get_logger
 from expkit.base.utils.base import error_on_fail
 from expkit.base.utils.data import deepcopy_dict_remove_private
 from expkit.base.utils.type_checking import check_type, type_guard, check_dict_types
-from expkit.framework.database import StageGroupDatabase, StageDatabase
+from expkit.framework.database import GroupDatabase, StageDatabase
 
 LOGGER = get_logger(__name__)
 
@@ -305,7 +305,7 @@ class ConfigParser:
         for artifact_name, artifact_block in self._root.artifacts.items():
             for stage_block in artifact_block.stages:
                 # Prefer stage groups before individual stages
-                group = StageGroupDatabase.get_instance().get_group(stage_block.stage_name)
+                group = GroupDatabase.get_instance().get_group(stage_block.stage_name)
 
                 if group is None:
                     LOGGER.error(f"Unable to find stage group {stage_block}")

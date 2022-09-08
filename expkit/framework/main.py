@@ -9,7 +9,7 @@ from typing import Optional, List, Tuple
 
 from expkit.base.command.base import CommandOptions
 from expkit.base.logger import get_logger, init_global_logging
-from expkit.framework.database import TaskDatabase, auto_discover_databases, StageGroupDatabase, StageDatabase, \
+from expkit.framework.database import TaskDatabase, auto_discover_databases, GroupDatabase, StageDatabase, \
     CommandDatabase
 from expkit.framework.parser import ConfigParser
 
@@ -74,7 +74,7 @@ def main():
     expkit_dir = Path(__file__).parent.parent
     LOGGER.info("Gathering all exploit chain modules")
     auto_discover_databases(expkit_dir)  # must only be called once
-    LOGGER.info(f"Found {len(StageGroupDatabase.get_instance())} groups, {len(StageDatabase.get_instance())} stages, {len(TaskDatabase.get_instance())} tasks, {len(CommandDatabase.get_instance())} commands")
+    LOGGER.info(f"Found {len(GroupDatabase.get_instance())} groups, {len(StageDatabase.get_instance())} stages, {len(TaskDatabase.get_instance())} tasks, {len(CommandDatabase.get_instance())} commands")
 
     # Checking arguments
     LOGGER.debug("Checking arguments")
@@ -134,6 +134,7 @@ def main():
         LOGGER.critical(f"Unknown command '{' '.join(args.command)}'. Use 'help' or '--help' to get a list of available commands")
     else:
         cmd, cmd_args = m
+        LOGGER.info(f"Executing command {cmd.name[1:]}")
         if not cmd.execute(CommandOptions(config, artifacts, output_dir, args.threads), *cmd_args):
             PRINT.info(f"\n{parser.format_help()}\n")
 

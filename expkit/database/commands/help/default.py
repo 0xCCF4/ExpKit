@@ -23,7 +23,7 @@ class HelpCommandDefault(CommandTemplate):
             LOGGER.warning(f"No help text / commands? found.")
 
         if len(args):
-            LOGGER.error(f"Unknown arguments: {args} for command {self.get_real_name()}")
+            LOGGER.error(f"Unknown arguments: {args} for command help. Did you meant to type 'help cmd {' '.join(args)}'?")
 
         PRINT.info(f"\nAvailable commands:\n{self._help_text}\n")
 

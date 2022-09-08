@@ -1,6 +1,8 @@
 from enum import IntFlag
 import sys, platform
-from typing import List, TypeVar, Generic, Optional, Iterator, Union, Dict
+from typing import List, TypeVar, Generic, Optional, Iterator, Union, Dict, Tuple
+
+from expkit.base.utils.type_checking import type_guard
 
 
 class Architecture(IntFlag):
@@ -160,23 +162,38 @@ class _PAMeta(type):
 
 
 class TargetPlatform(metaclass=_PAMeta):
-    def __init__(self, platform: Platform, architecture: Architecture):
+    __slots__ = ["_pairs"]
 
-        self.__initial_platform = platform
-        self.__initial_architecture = architecture
-
-        self._pairs = []
+    def __init__(self, platform: Platform = Platform.NONE, architecture: Architecture = Architecture.NONE):
+        self._pairs: List[Tuple[Platform, Architecture]] = []
 
         for p in platform.get_platforms():
             for a in architecture.get_architectures():
                 if a in p:
-                    self._pairs.append((p, a))
+                    self._add_pair(p, a)
+
+    def _add_pair(self, platform: Platform, architecture: Architecture):
+        assert platform.is_single() and architecture.is_single(), "Platform and architecture must be single values"
+        if (platform, architecture) not in self._pairs:
+            self._pairs.append((platform, architecture))
+
+    def copy(self) -> "TargetPlatform":
+        tp = TargetPlatform()
+        tp._pairs = self._pairs.copy()
+        return tp
 
     def union(self, other: "TargetPlatform") -> "TargetPlatform":
-        return TargetPlatform(self.__initial_platform | other.__initial_platform, self.__initial_architecture | other.__initial_architecture)
+        tp = self.copy()
+        for pair in other:
+            tp._add_pair(*pair)
+        return tp
 
     def intersection(self, other: "TargetPlatform") -> "TargetPlatform":
-        return TargetPlatform(self.__initial_platform & other.__initial_platform, self.__initial_architecture & other.__initial_architecture)
+        tp = TargetPlatform()
+        for pair in self:
+            if pair in other:
+                tp._add_pair(*pair)
+        return tp
 
     def is_empty(self):
         return len(self._pairs) == 0
@@ -217,6 +234,19 @@ class TargetPlatform(metaclass=_PAMeta):
     @staticmethod
     def get_default_values() -> Dict[str, "TargetPlatform"]:
         return _PLATFORM_ARCHITECTURES
+
+    def get_pretty_string(self) -> Optional[str]:
+        for k, v in _PLATFORM_ARCHITECTURES.items():
+            if self == v:
+                return k
+        return None
+
+    @staticmethod
+    def from_list(pairs: List[Tuple[Platform, Architecture]]) -> "TargetPlatform":
+        tp = TargetPlatform()
+        for pair in pairs:
+            tp._add_pair(*pair)
+        return tp
 
 
 _PLATFORM_ARCHITECTURES = {

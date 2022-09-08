@@ -73,20 +73,16 @@ class CommandTemplate:
     def execute(self, options: CommandOptions, *args) -> bool:
         error_on_fail(check_type(list(args), List[str]), "Invalid arguments")
 
-        m = self.get_command(*args)
-        if m is None:
-            return False
-
-        return m[0]._execute_command(options, *m[1])
+        return self._execute_command(options, *args)
 
     def add_child_command(self, child: "CommandTemplate"):
         if len(child.name) <= 1:
             raise ValueError("Invalid command name")
         if child.name in [c.name for c in self.children]:
             raise ValueError(f"Command {child.name} already exists")
-        if not child.name.startswith(self.name):
+        if not child.name.startswith(self.name) or child.name == self.name:
             raise ValueError(f"Command {child.name} must be a direct child of {self.name}")
-        if child.name[len(self.name)] != "." and "." not in child.name[len(self.name)+1:]:
+        if child.name[len(self.name)] != "." or "." in child.name[len(self.name)+1:]:
             raise ValueError(f"Command {child.name} must be a direct child of {self.name}")
         if child.parent is not None:
             raise ValueError(f"Command {child.name} is already attached to {child.parent.name}")
@@ -111,9 +107,9 @@ class CommandTemplate:
     def can_be_attached_as_child(self, child: "CommandTemplate") -> bool:
         if len(child.name) <= 1:
             return False
-        if not child.name.startswith(self.name):
+        if not child.name.startswith(self.name) or child.name == self.name:
             return False
-        if child.name[len(self.name)] != "." and "." not in child.name[len(self.name)+1:]:
+        if child.name[len(self.name)] != "." or "." in child.name[len(self.name)+1:]:
             return False
         return True
 

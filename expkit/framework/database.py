@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Dict, Optional, Type, TypeVar, Generic, List, Callable, Union, Tuple
 
 from expkit.base.command.base import CommandTemplate, CommandArgumentCount
-from expkit.base.group.base import StageTemplateGroup
+from expkit.base.group.base import GroupTemplate
 from expkit.base.logger import get_logger
 from importlib import import_module
 
@@ -38,14 +38,14 @@ class RegisterDecoratorHelper(Generic[T]):
 
 __helper_tasks: RegisterDecoratorHelper[StageTaskTemplate] = RegisterDecoratorHelper()
 __helper_stages: RegisterDecoratorHelper[StageTemplate] = RegisterDecoratorHelper()
-__helper_stage_groups: RegisterDecoratorHelper[StageTemplateGroup] = RegisterDecoratorHelper()
+__helper_stage_groups: RegisterDecoratorHelper[GroupTemplate] = RegisterDecoratorHelper()
 __helper_auto_groups: RegisterDecoratorHelper[Tuple[str, str, Optional[str]]] = RegisterDecoratorHelper()
 __helper_commands: RegisterDecoratorHelper[CommandTemplate] = RegisterDecoratorHelper()
 
 def _register_obj(type: int, *cargs, **kwargs):
     args = cargs
 
-    def decorator(obj: Type[Union[StageTaskTemplate, StageTemplate, StageTemplateGroup, CommandTemplate]]):
+    def decorator(obj: Type[Union[StageTaskTemplate, StageTemplate, GroupTemplate, CommandTemplate]]):
         instance = None
         if 1 <= type <= 3 or type == 5:
             instance = obj(*args, **kwargs)
@@ -140,7 +140,7 @@ def auto_discover_databases(directory: Path, module_prefix: str = "expkit."):
 
     __helper_tasks.finalize(TaskDatabase.get_instance().add_task)
     __helper_stages.finalize(StageDatabase.get_instance().add_stage)
-    __helper_stage_groups.finalize(StageGroupDatabase.get_instance().add_group)
+    __helper_stage_groups.finalize(GroupDatabase.get_instance().add_group)
 
     auto_group_data_raw = []
     __helper_auto_groups.finalize(auto_group_data_raw.append)
@@ -155,7 +155,7 @@ def auto_discover_databases(directory: Path, module_prefix: str = "expkit."):
         auto_group_data[group].append((stage, description))
 
     for group, data in auto_group_data.items():
-        group_obj = StageGroupDatabase.get_instance().get_group(group)
+        group_obj = GroupDatabase.get_instance().get_group(group)
 
         if group_obj is None:
             descriptions = [description for _, description in data]
@@ -169,7 +169,7 @@ def auto_discover_databases(directory: Path, module_prefix: str = "expkit."):
                 raise ValueError(f"Group {group} does not exist and cannot be auto-created as multiple different descriptions are provided")
 
             description = descriptions[0]
-            group_obj = StageGroupDatabase.get_instance().add_group(StageTemplateGroup(group, description))
+            group_obj = GroupDatabase.get_instance().add_group(GroupTemplate(group, description))
 
         LOGGER.debug(f"Auto-grouping {group}")
 
@@ -283,12 +283,12 @@ class StageDatabase():
         return StageDatabase.__instance
 
 
-class StageGroupDatabase():
+class GroupDatabase():
     def __init__(self):
-        self.groups: Dict[str, StageTemplateGroup] = {}
+        self.groups: Dict[str, GroupTemplate] = {}
         LOGGER.debug("Created stage group database")
 
-    def add_group(self, group: StageTemplateGroup) -> StageTemplateGroup:
+    def add_group(self, group: GroupTemplate) -> GroupTemplate:
         assert group.name == group.name.upper(), "Only upper case stage group names are allowed"
         if group.name in self.groups:
             raise ValueError(f"Stage group with name {group.name} already exists in the database")
@@ -297,18 +297,18 @@ class StageGroupDatabase():
 
         return group
 
-    def get_group(self, name: str) -> Optional[StageTemplateGroup]:
+    def get_group(self, name: str) -> Optional[GroupTemplate]:
         return self.groups.get(name, None)
 
     def __len__(self):
         return len(self.groups)
 
-    __instance: 'StageGroupDatabase' = None
+    __instance: 'GroupDatabase' = None
     @staticmethod
-    def get_instance() -> 'StageGroupDatabase':
-        if StageGroupDatabase.__instance is None:
-            StageGroupDatabase.__instance = StageGroupDatabase()
-        return StageGroupDatabase.__instance
+    def get_instance() -> 'GroupDatabase':
+        if GroupDatabase.__instance is None:
+            GroupDatabase.__instance = GroupDatabase()
+        return GroupDatabase.__instance
 
 
 class CommandDatabase():

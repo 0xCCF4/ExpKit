@@ -11,7 +11,7 @@ PRINT = get_logger(__name__, True)
 
 
 @register_command
-class HelpCommandDefault(CommandTemplate):
+class HelpCommand(CommandTemplate):
     def __init__(self):
         super().__init__(".help.cmd", CommandArgumentCount(0, "*"), textwrap.dedent('''\
             Print help about a command.
@@ -35,7 +35,7 @@ class HelpCommandDefault(CommandTemplate):
                 cmd, cargs = m
 
                 PRINT.info(f"{cmd.get_pretty_description(short_description=False)}\n")
-                LOGGER.debug(f"Found command: {cmd.name} with args: {cargs}")
+                LOGGER.debug(f"Found command: {cmd.name[1:]} with args: {cargs}")
 
         return True
 
