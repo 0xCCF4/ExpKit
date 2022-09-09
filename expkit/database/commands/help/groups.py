@@ -41,24 +41,9 @@ class GroupInfoCommand(CommandTemplate):
                     PRINT.info(f"Group '{name}'")
                     PRINT.info(textwrap.fill(f"Description: {group.description}", initial_indent='  ', subsequent_indent='    '))
 
-                    # platform = group.get_supported_platforms()
-                    # platform_text = platform.get_pretty_string()
-                    # if platform_text is not None:
-                    #     PRINT.info(f"  Platform: {platform_text}")
-                    # else:
-                    #     PRINT.info(f"  Platform:")
-                    #     for platform, architecture in platform:
-                    #         PRINT.info(f"    - {platform} ({architecture})")
-
                     PRINT.info(f"  Supported platforms:")
                     for entry in group.get_supported_platforms():
                         PRINT.info(f"    - {entry.platform.name} ({entry.architecture.name}) | {entry.input_type} ({entry.dependencies}) -> {entry.output_type}")
-                    # for pl, ar in platform:
-                    #     PRINT.info(f"    {pl.name} ({ar.name})")
-                    #     for dependency, input_types in group.get_supported_input_dependency_payload_types(pl, ar):
-                    #         for input_type in input_types:
-                    #             for output_type in group.get_output_payload_type(pl, ar, input_type, dependency):
-                    #                 PRINT.info(f"      - {input_type.name} ({dependency}) -> {output_type.name}")
 
                     if len(group.stages) > 0:
                         PRINT.info(f"  Stages:")

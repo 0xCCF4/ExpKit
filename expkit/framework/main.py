@@ -2,7 +2,7 @@ import argparse
 import json
 import logging
 import os
-import sys
+import tempfile
 import textwrap
 from json import JSONDecodeError
 from pathlib import Path
@@ -26,6 +26,7 @@ def main():
     parser.add_argument("-f", "--file", help="configuration file to load", type=str, default=None)
     parser.add_argument("-t", "--targets", help="artifact to build, several artifacts can be separated by comma", type=str, default=None)
     parser.add_argument("-o", "--output", help="temporary build directory", type=str, default=None)
+    parser.add_argument("-w", "--working-dir", help="working directory", type=str, default=None)
     parser.add_argument("-l", "--log", help="log file", type=str, default=None)
     parser.add_argument("-n", "--threads", help="number of threads to use", type=int, default=1)
     parser.add_argument("command", metavar="cmd", type=str, nargs="*",
@@ -68,6 +69,9 @@ def main():
         LOGGER.info("Printing verbose output")
     if args.debug:
         LOGGER.info("Printing debug output")
+
+    if args.working_dir is not None:
+        os.chdir(args.working_dir)
 
     # Load database
     expkit_dir = Path(__file__).parent.parent
@@ -119,11 +123,17 @@ def main():
     output_dir = None
     if args.output is not None:
         output_dir = Path(args.output)
-        if not output_dir.exists():
-            LOGGER.critical(f"Output directory {output_dir} does not exist")
         if not output_dir.is_dir():
             LOGGER.critical(f"Output directory {output_dir} is not a directory")
+        if not output_dir.exists():
+            output_dir.mkdir()
+            if not output_dir:
+                LOGGER.critical(f"Output directory {output_dir} does not exist")
         LOGGER.debug("Output directory exists")
+
+    if output_dir is None:
+        output_dir = Path(tempfile.mkdtemp(prefix="expkit_", suffix="_build"))
+        LOGGER.info(f"Using temporary directory as output directory: {output_dir.absolute()}")
 
     if config_file is None:
         LOGGER.info("No config file specified. Using default file_path")

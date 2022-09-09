@@ -1,8 +1,6 @@
 from enum import IntFlag
 import sys, platform
-from typing import List, TypeVar, Generic, Optional, Iterator, Union, Dict, Tuple
-
-from expkit.base.utils.type_checking import type_guard
+from typing import List, Optional, Union, Dict, Tuple
 
 
 class Architecture(IntFlag):
@@ -34,6 +32,15 @@ class Architecture(IntFlag):
             return Architecture.ARM64
         else:
             raise RuntimeError(f"Unsupported architecture {cpu}")
+
+    @staticmethod
+    def get_architecture_from_name(name: str) -> "Architecture":
+        name = name.lower()
+        for value in Architecture:
+            if value.name.lower() == name:
+                return value
+
+        return Architecture.UNKNOWN
 
     def is_single(self) -> bool:
         return self.value.bit_count() == 1
@@ -214,8 +221,10 @@ class TargetPlatform(metaclass=_PAMeta):
                 if pair not in self._pairs:
                     return False
             return True
+        elif isinstance(other, tuple) and len(other) == 2 and isinstance(other[0], Platform) and isinstance(other[1], Architecture):
+            return other in self._pairs
         else:
-            return super().__contains__(other)
+            raise TypeError(f"Cannot check if {other} is in {self}")
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self._pairs})"

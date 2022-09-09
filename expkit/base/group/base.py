@@ -1,9 +1,9 @@
 import copy
 import threading
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import List, Optional
 
-from expkit.base.architecture import TargetPlatform, Platform, Architecture
+from expkit.base.architecture import Platform, Architecture
 from expkit.base.logger import get_logger
 
 from expkit.base.payload import Payload, PayloadType
@@ -38,9 +38,6 @@ class GroupTemplate:
         self.__cache_valid = False
         self.__cache_lock = threading.RLock()
         self.__cache: List[GroupCacheEntry] = []
-        # self.__cache_platforms_archs: List[Tuple[Platform, Architecture]] = []
-        # self.__cache_input_types: Dict[Tuple[Platform, Architecture], List[Tuple[List[PayloadType], List[PayloadType]]]] = {} # values are dependency types and output types
-        # self.__cache_output_types: Dict[Tuple[Platform, Architecture, PayloadType, List[PayloadType]], List[PayloadType]] = {}
 
     def _invalidate_cache(self):
         with self.__cache_lock:
@@ -53,30 +50,6 @@ class GroupTemplate:
                 self.__build_cache()
 
             return self.__cache
-
-    # @property
-    # def _cache_platforms_arch(self) -> List[Tuple[Platform, Architecture]]:
-    #     with self.__cache_lock:
-    #         if not self.__cache_valid:
-    #             self.__build_cache()
-    #
-    #         return self.__cache_platforms_archs
-
-    # @property
-    # def _cache_input_types(self) -> Dict[Tuple[Platform, Architecture], List[Tuple[List[PayloadType], List[PayloadType]]]]:
-    #     with self.__cache_lock:
-    #         if not self.__cache_valid:
-    #             self.__build_cache()
-    #
-    #         return self.__cache_input_types
-    #
-    # @property
-    # def _cache_output_types(self) -> Dict[Tuple[Platform, Architecture, PayloadType, List[PayloadType]], List[PayloadType]]:
-    #     with self.__cache_lock:
-    #         if not self.__cache_valid:
-    #             self.__build_cache()
-    #
-    #         return self.__cache_output_types
 
     def add_stage(self, stage: StageTemplate):
         with self.__cache_lock:
@@ -106,51 +79,15 @@ class GroupTemplate:
             self.__cache = []
             self.__cache_valid = True
             self.__cache_platforms_archs = []
-            # self.__cache_input_types = {}
-            # self.__cache_dependency_types = {}
-            # self.__cache_output_types = {}
 
             for stage in self.stages:
                 for platform, arch in stage.platform:
                     system = (platform, arch)
 
                     self.__cache_platforms_archs.append(system)
-                    # input_types = stage.get_supported_input_payload_types()
-                    # dependencies = stage.get_supported_dependency_types()
-                    #
-                    # if not system in self.__cache_input_types:
-                    #     self.__cache_input_types[system] = []
-                    #
-                    # cache_input_types_entry = self.__cache_input_types[system]
-                    #
-                    # for dependency in dependencies:
-                    #     cache_dependency_entry = None
-                    #
-                    #     for subentry in cache_input_types_entry:
-                    #         if subentry[0] == dependency:
-                    #             cache_dependency_entry = subentry
-                    #             break
-                    #
-                    #     if cache_dependency_entry is None:
-                    #         cache_input_types_entry.append(cache_dependency_entry := (dependency, []))
-                    #
-                    #     for input_type in input_types:
-                    #         if input_type not in cache_dependency_entry[1]:
-                    #             cache_dependency_entry[1].append(input_type)
 
                     for input_type in stage.get_supported_input_payload_types():
                         for dependency_set in stage.get_supported_dependency_types():
-                            #system = (platform, arch, input_type)
-
-                            #output_types = stage.get_output_payload_type(input_type, dependency_set)
-
-                            # if system not in self.__cache_output_types:
-                            #     self.__cache_output_types[system] = []
-                            #
-                            # input_combi = (dependency_set, output_types)
-                            # if input_combi not in self.__cache_output_types[system]:
-                            #     self.__cache_output_types[system].append(input_combi)
-
                             for output_type in stage.get_output_payload_type(input_type, dependency_set):
                                 cache_entries = self._get_cache_entry(platform, arch, input_type, dependency_set, output_type)
 
@@ -160,22 +97,8 @@ class GroupTemplate:
 
                                 cache_entries.append(stage)
 
-            #self.__cache_platforms_archs = list(set(self.__cache_platforms_archs))
-
     def get_supported_platforms(self) -> List[GroupCacheEntry]:
         return self._cache
-
-    # def get_supported_input_dependency_payload_types(self, platform: Platform, architecture: Architecture) -> List[Tuple[List[PayloadType], List[PayloadType]]]:
-    #     assert platform.is_single()
-    #     assert architecture.is_single()
-    #
-    #     return self._cache_input_types.get((platform, architecture), [])
-    #
-    # def get_output_payload_type(self, platform: Platform, architecture: Architecture, input_type: PayloadType, dependencies: List[PayloadType]) -> List[PayloadType]:
-    #     assert platform.is_single()
-    #     assert architecture.is_single()
-    #
-    #     return self.__cache_output_types.get((platform, architecture, input_type, dependencies), [])
 
     def get_stage(self, platform: Platform, architecture: Architecture, input_type: PayloadType, dependencies: List[PayloadType], output_type: PayloadType) -> Optional[StageTemplate]:
         assert platform.is_single()
