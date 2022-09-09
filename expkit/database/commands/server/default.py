@@ -25,7 +25,7 @@ class ServerCommand(CommandTemplate):
             platform independent, the platform and arch parameters should be
             set to "DUMMY". An error will be signaled using the status code
             500. A json object with an error message will be returned. The
-            server will listen on port 8080 and bound to ip 0.0.0.0 by default.
+            server will listen on port 8080 and is bound to ip 0.0.0.0 by default.
             '''))
 
     def get_pretty_description_header(self) -> str:

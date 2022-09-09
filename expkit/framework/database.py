@@ -138,6 +138,8 @@ def auto_discover_databases(directory: Path, module_prefix: str = "expkit."):
                 LOGGER.error(e)
                 continue
 
+
+def build_databases():
     __helper_tasks.finalize(TaskDatabase.get_instance().add_task)
     __helper_stages.finalize(StageDatabase.get_instance().add_stage)
     __helper_stage_groups.finalize(GroupDatabase.get_instance().add_group)

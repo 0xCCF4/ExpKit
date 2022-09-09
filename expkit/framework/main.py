@@ -1,17 +1,16 @@
 import argparse
 import json
 import logging
+import os
 import sys
 import textwrap
 from json import JSONDecodeError
 from pathlib import Path
-from typing import Optional, List, Tuple
 
 from expkit.base.command.base import CommandOptions
 from expkit.base.logger import get_logger, init_global_logging
 from expkit.framework.database import TaskDatabase, auto_discover_databases, GroupDatabase, StageDatabase, \
-    CommandDatabase
-from expkit.framework.parser import ConfigParser
+    CommandDatabase, build_databases
 
 LOGGER = None
 PRINT = None
@@ -73,7 +72,28 @@ def main():
     # Load database
     expkit_dir = Path(__file__).parent.parent
     LOGGER.info("Gathering all exploit chain modules")
-    auto_discover_databases(expkit_dir)  # must only be called once
+
+    auto_discover_databases(expkit_dir)
+
+    external_dbs = os.environ.get("EXPKIT_DB", None)
+    if external_dbs is not None:
+        external_dbs = external_dbs.split(":")
+        for db_config in external_dbs:
+            db_config = db_config.split("#")
+            if len(db_config) != 2:
+                LOGGER.error(f"Invalid database configuration: {db_config}")
+                continue
+
+            path, module = db_config
+            path = Path(path)
+
+            LOGGER.info(f"Loading external database: {path} ({module})")
+            if not path.exists() or not path.is_dir():
+                LOGGER.error(f"Invalid database path: {path}")
+            else:
+                auto_discover_databases(path, module)
+
+    build_databases()
     LOGGER.info(f"Found {len(GroupDatabase.get_instance())} groups, {len(StageDatabase.get_instance())} stages, {len(TaskDatabase.get_instance())} tasks, {len(CommandDatabase.get_instance())} commands")
 
     # Checking arguments

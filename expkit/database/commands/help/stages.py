@@ -12,7 +12,7 @@ PRINT = get_logger(__name__, True)
 @register_command
 class StageInfoCommand(CommandTemplate):
     def __init__(self):
-        super().__init__(".stages", CommandArgumentCount(0, "*"), textwrap.dedent('''\
+        super().__init__(".help.stages", CommandArgumentCount(0, "*"), textwrap.dedent('''\
             Print information about stages.
         '''), textwrap.dedent('''\
             Print information about a specific stage. If no name is given, a list

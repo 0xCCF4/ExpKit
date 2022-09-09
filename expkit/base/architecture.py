@@ -96,11 +96,11 @@ class Platform(IntFlag):
             return Platform.ALL
 
     def supporting_architectures(self) -> List[Architecture]:
-        if self.WINDOWS:
+        if self == Platform.WINDOWS:
             return [Architecture.i386, Architecture.AMD64]
-        elif self.LINUX:
+        elif self == Platform.LINUX:
             return [Architecture.i386, Architecture.AMD64, Architecture.ARM, Architecture.ARM64]
-        elif self.MACOS:
+        elif self == Platform.MACOS:
             return [Architecture.AMD64]
         else:
             return []
@@ -175,7 +175,8 @@ class TargetPlatform(metaclass=_PAMeta):
     def _add_pair(self, platform: Platform, architecture: Architecture):
         assert platform.is_single() and architecture.is_single(), "Platform and architecture must be single values"
         if (platform, architecture) not in self._pairs:
-            self._pairs.append((platform, architecture))
+            if architecture in platform.supporting_architectures():
+                self._pairs.append((platform, architecture))
 
     def copy(self) -> "TargetPlatform":
         tp = TargetPlatform()

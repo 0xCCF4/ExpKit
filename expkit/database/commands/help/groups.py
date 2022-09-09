@@ -12,12 +12,12 @@ PRINT = get_logger(__name__, True)
 @register_command
 class GroupInfoCommand(CommandTemplate):
     def __init__(self):
-        super().__init__(".groups", CommandArgumentCount(0, "*"), textwrap.dedent('''\
+        super().__init__(".help.groups", CommandArgumentCount(0, "*"), textwrap.dedent('''\
             Print information about groups.
         '''), textwrap.dedent('''\
             Print information about a specific group. If no name is given, a list
             of all groups, is printed.
-            When a name is given, the help for the specific groups is printed.
+            When a name is given, the help for the specific group is printed.
             This includes a description and a list of available config parameters.
             '''))
 
@@ -52,7 +52,7 @@ class GroupInfoCommand(CommandTemplate):
 
                     PRINT.info(f"  Supported platforms:")
                     for entry in group.get_supported_platforms():
-                        PRINT.info(f"    - {entry.platform} ({entry.architecture}) | {entry.input_type} ({entry.dependencies}) -> {entry.output_type}")
+                        PRINT.info(f"    - {entry.platform.name} ({entry.architecture.name}) | {entry.input_type} ({entry.dependencies}) -> {entry.output_type}")
                     # for pl, ar in platform:
                     #     PRINT.info(f"    {pl.name} ({ar.name})")
                     #     for dependency, input_types in group.get_supported_input_dependency_payload_types(pl, ar):
@@ -60,9 +60,8 @@ class GroupInfoCommand(CommandTemplate):
                     #             for output_type in group.get_output_payload_type(pl, ar, input_type, dependency):
                     #                 PRINT.info(f"      - {input_type.name} ({dependency}) -> {output_type.name}")
 
-
                     if len(group.stages) > 0:
-                        PRINT.info(f"\n  Stages:")
+                        PRINT.info(f"  Stages:")
                         for stage in group.stages:
                             PRINT.info(f"    - {stage}")
 

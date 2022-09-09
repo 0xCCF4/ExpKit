@@ -1,30 +1,37 @@
-import base64
 import re
-import threading
-from pathlib import Path
-from typing import List, Optional, Callable, Dict, Tuple
+from typing import  Optional, Callable, Dict
 
 from expkit.base.logger import get_logger
 from expkit.base.architecture import TargetPlatform
-from expkit.base.stage.base import StageTemplate
-from expkit.base.task.base import StageTaskTemplate, TaskOutput
-from expkit.base.utils.base import error_on_fail
-from expkit.base.utils.type_checking import check_dict_types
 from expkit.database.tasks.general.utils.abstract_string_replace import AbstractStringReplace
 from expkit.framework.database import register_task
 
-def __transform_base64(input: str) -> str:
-    if len(input) > 0:
-        b64 = base64.b64encode(input.encode("utf8")).decode("utf8")
-        out = f"Encoding.UTF8.GetString(Convert.FromBase64String(\"{b64}\"))"
-    else:
-        out = "\"\""
-    return out
+
+TRANSFORMATIONS: Dict[str, Callable[[str], str]] = {}
 
 
-TRANSFORMATIONS: Dict[str, Callable[[str], str]] = {
-    "base64": __transform_base64
-}
+def register_csharp_string_transform_func(*args, **kwargs):
+    def decorator(func):
+        name = args[0]
+
+        if name in TRANSFORMATIONS:
+            raise ValueError(f"Transformation {name} already registered")
+
+        TRANSFORMATIONS[name] = func
+        return func
+
+    if len(args) == 1 and len(kwargs) == 0 and callable(args[0]):
+        raise ValueError("Decorator must be called with transformation name as parameter")
+    if len(args) > 1:
+        raise ValueError("Decorator must be called with transformation name as parameter")
+    if len(kwargs) > 0:
+        raise ValueError("Decorator must be called with transformation name as parameter")
+    assert len(args) == 1 and len(kwargs) == 0 and callable(args[0]) is False, "Decorator must be called with transformation name as parameter"
+    if len(args) == 1 and not isinstance(args[0], str):
+        raise ValueError("Decorator must be called with transformation name as parameter")
+
+    return decorator
+
 
 LOGGER = get_logger(__name__)
 
@@ -153,6 +160,18 @@ class CSharpStringTransformTemplateTask(AbstractStringReplace):
                 return "{{BL}}"
             elif operator == "n":
                 return "\n"
+            elif operator == "r":
+                return "\r"
+            elif operator == "t":
+                return "\t"
+            elif operator == "b":
+                return "\b"
+            elif operator == "'":
+                return "\'"
+            elif operator == "\"":
+                return "\""
+            elif operator == "0":
+                return "\0"
             else:
                 raise ValueError(f"Unknown operator {operator}")
 

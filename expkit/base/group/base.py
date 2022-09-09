@@ -155,9 +155,8 @@ class GroupTemplate:
                                 cache_entries = self._get_cache_entry(platform, arch, input_type, dependency_set, output_type)
 
                                 if cache_entries is None:
-                                    cache_entries = []
                                     # todo strange debug error <- investigate
-                                    self.__cache.append(GroupCacheEntry(platform, arch, input_type, dependency_set, output_type, cache_entries))
+                                    self.__cache.append(GroupCacheEntry(platform, arch, input_type, dependency_set, output_type, cache_entries := []))
 
                                 cache_entries.append(stage)
 
