@@ -19,11 +19,6 @@ LOGGER = get_logger(__name__)
 class ServerCommand(CommandTemplate):
     __instance = None
 
-    def __new__(cls, *args, **kwargs):
-        instance = super().__new__(cls, *args, **kwargs)
-        cls.__instance = instance
-        return instance
-
     def __init__(self):
         super().__init__(".server", CommandArgumentCount(0, 3), textwrap.dedent('''\
             Builds and serves an exploit on the fly when a client connects to the local server.
@@ -54,6 +49,8 @@ class ServerCommand(CommandTemplate):
 
     def _execute_command(self, options: CommandOptions, *args) -> bool:
         with self.__lock:
+            ServerCommand.__instance = self
+
             port = 8080
             ip = "0.0.0.0"
             self.token = None

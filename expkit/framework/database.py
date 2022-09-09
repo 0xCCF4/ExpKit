@@ -9,7 +9,7 @@ from expkit.base.logger import get_logger
 from importlib import import_module
 
 from expkit.base.stage.base import StageTemplate
-from expkit.base.task.base import StageTaskTemplate
+from expkit.base.task.base import TaskTemplate
 from expkit.base.utils.files import recursive_foreach_file
 
 LOGGER = get_logger(__name__)
@@ -36,52 +36,54 @@ class RegisterDecoratorHelper(Generic[T]):
             else:
                 self._registered.append(obj)
 
-__helper_tasks: RegisterDecoratorHelper[StageTaskTemplate] = RegisterDecoratorHelper()
-__helper_stages: RegisterDecoratorHelper[StageTemplate] = RegisterDecoratorHelper()
-__helper_stage_groups: RegisterDecoratorHelper[GroupTemplate] = RegisterDecoratorHelper()
+__helper_tasks: RegisterDecoratorHelper[Tuple[Type[TaskTemplate], tuple, dict]] = RegisterDecoratorHelper()
+__helper_stages: RegisterDecoratorHelper[Tuple[Type[StageTemplate], tuple, dict]] = RegisterDecoratorHelper()
+__helper_groups: RegisterDecoratorHelper[Tuple[Type[GroupTemplate], tuple, dict]] = RegisterDecoratorHelper()
 __helper_auto_groups: RegisterDecoratorHelper[Tuple[str, str, Optional[str]]] = RegisterDecoratorHelper()
-__helper_commands: RegisterDecoratorHelper[CommandTemplate] = RegisterDecoratorHelper()
+__helper_commands: RegisterDecoratorHelper[Tuple[Type[CommandTemplate], tuple, dict]] = RegisterDecoratorHelper()
+
 
 def _register_obj(type: int, *cargs, **kwargs):
     args = cargs
 
-    def decorator(obj: Type[Union[StageTaskTemplate, StageTemplate, GroupTemplate, CommandTemplate]]):
-        instance = None
-        if 1 <= type <= 3 or type == 5:
-            instance = obj(*args, **kwargs)
-            obj.__auto_discover_instance = instance
-        elif type == 4:
-            instance = getattr(obj, "__auto_discover_instance", None)
-            if instance is None:
-                LOGGER.warning(f"Cannot auto-group {obj} as it has not been registered before")
-            if not isinstance(instance, StageTemplate):
-                LOGGER.warning(f"Cannot auto-group {obj} as it is not a stage")
-
+    def decorator(obj: Type[Union[TaskTemplate, StageTemplate, GroupTemplate, CommandTemplate]]):
         if type==1: # task
-            __helper_tasks.register(instance)
+            assert issubclass(obj, TaskTemplate)
+            __helper_tasks.register((obj, args, kwargs))
+            setattr(obj, "__auto_register__", (args, kwargs))
         elif type==2: # stage
-            __helper_stages.register(instance)
+            assert issubclass(obj, StageTemplate)
+            __helper_stages.register((obj, args, kwargs))
+            setattr(obj, "__auto_register__", (args, kwargs))
         elif type==3: # group
-            __helper_stage_groups.register(instance)
+            assert issubclass(obj, GroupTemplate)
+            __helper_groups.register((obj, args, kwargs))
+            setattr(obj, "__auto_register__", (args, kwargs))
         elif type==4: # auto group
-            if instance is not None:
-                stage_name = instance.name
+            assert issubclass(obj, StageTemplate)
+            autoconf = getattr(obj, "__auto_register__", None)
 
-                if not (1 <= len(args) <= 2 and len(kwargs) == 0):
-                    raise ValueError("Auto-grouping requires a group name and optional description")
+            if autoconf is None or len(autoconf) != 2:
+                raise RuntimeError(f"Stage {obj} was not registered with @register_stage")
 
-                group_name = args[0]
-                description = None
+            stage_name = obj(*autoconf[0], **autoconf[1]).name
 
-                if len(args) == 2:
-                    description = args[1]
+            if not (1 <= len(args) <= 2 and len(kwargs) == 0):
+                raise ValueError("Auto-grouping requires a group name and optional description")
 
-                if not isinstance(group_name, str) or (description is not None and not isinstance(description, str)):
-                    raise ValueError("Auto-grouping requires a string arguments")
+            group_name = args[0]
+            description = None
 
-                __helper_auto_groups.register((group_name, stage_name, description))
+            if len(args) == 2:
+                description = args[1]
+
+            if not isinstance(group_name, str) or (description is not None and not isinstance(description, str)):
+                raise ValueError("Auto-grouping requires a string arguments")
+
+            __helper_auto_groups.register((group_name, stage_name, description))
         elif type==5: # command
-            __helper_commands.register(instance)
+            assert issubclass(obj, CommandTemplate)
+            __helper_commands.register((obj, args, kwargs))
         else:
             raise TypeError(f"Unable to register {obj} as it is not a StageTaskTemplate, StageTemplate, StageTemplateGroup, CommandTemplate or AutoGroup")
 
@@ -140,9 +142,9 @@ def auto_discover_databases(directory: Path, module_prefix: str = "expkit."):
 
 
 def build_databases():
-    __helper_tasks.finalize(TaskDatabase.get_instance().add_task)
-    __helper_stages.finalize(StageDatabase.get_instance().add_stage)
-    __helper_stage_groups.finalize(GroupDatabase.get_instance().add_group)
+    __helper_tasks.finalize(lambda entry: TaskDatabase.get_instance().add_task(entry[0](*entry[1], **entry[2])))
+    __helper_stages.finalize(lambda entry: StageDatabase.get_instance().add_stage(entry[0](*entry[1], **entry[2])))
+    __helper_groups.finalize(lambda entry: GroupDatabase.get_instance().add_group(entry[0](*entry[1], **entry[2])))
 
     auto_group_data_raw = []
     __helper_auto_groups.finalize(auto_group_data_raw.append)
@@ -185,7 +187,7 @@ def build_databases():
             group_obj.add_stage(stage_obj)
 
     commands_buffer: List[CommandTemplate] = []
-    __helper_commands.finalize(commands_buffer.append)
+    __helper_commands.finalize(lambda entry: commands_buffer.append(entry[0](*entry[1], **entry[2])))
     root_cmd = CommandDatabase.get_instance()
 
     all_cmds = [root_cmd]
@@ -200,7 +202,7 @@ def build_databases():
                 if parent.can_be_attached_as_child(cmd):
                     found_parent = parent
             if found_parent is not None:
-                found_parent.add_child_command(cmd)
+                found_parent.add_command(cmd)
                 all_cmds.append(cmd)
                 del commands_buffer[index]
                 iteration = 0
@@ -231,10 +233,10 @@ def build_databases():
 
 class TaskDatabase():
     def __init__(self):
-        self.tasks: Dict[str, StageTaskTemplate] = {}
+        self.tasks: Dict[str, TaskTemplate] = {}
         LOGGER.debug("Created task database")
 
-    def add_task(self, task: StageTaskTemplate) -> StageTaskTemplate:
+    def add_task(self, task: TaskTemplate) -> TaskTemplate:
         assert task.name == task.name.lower(), "Only lower case task names are allowed"
         if task.name in self.tasks:
             raise ValueError(f"Task with name {task.name} already exists in the database")
@@ -243,7 +245,7 @@ class TaskDatabase():
 
         return task
 
-    def get_task(self, name: str) -> Optional[StageTaskTemplate]:
+    def get_task(self, name: str) -> Optional[TaskTemplate]:
         return self.tasks.get(name, None)
 
     def __len__(self):

@@ -6,7 +6,7 @@ from expkit.base.architecture import TargetPlatform
 from expkit.base.logger import get_logger
 from expkit.base.stage.base import StageTemplate
 from expkit.base.stage.context import StageContext
-from expkit.base.task.base import StageTaskTemplate, TaskOutput
+from expkit.base.task.base import TaskTemplate, TaskOutput
 from expkit.base.utils.base import error_on_fail
 from expkit.base.utils.files import recursive_foreach_file
 from expkit.base.utils.type_checking import check_dict_types
@@ -14,7 +14,7 @@ from expkit.base.utils.type_checking import check_dict_types
 LOGGER = get_logger(__name__)
 
 
-class AbstractForeachFileTask(StageTaskTemplate):
+class AbstractForeachFileTask(TaskTemplate):
     def __init__(self, name: str, description: str, platform: TargetPlatform, required_parameters: dict):
         super().__init__(
             name=name,

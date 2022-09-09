@@ -53,7 +53,7 @@ class StageInfoCommand(CommandTemplate):
                     if len(dependency_types) <= 0:
                         LOGGER.error("No dependency types supported - stage is unusable")
 
-                    PRINT.info(f"\n  Dependencies:")
+                    PRINT.info(f"  Dependencies:")
                     for dependencies in dependency_types:
                         PRINT.info(f"    - {dependencies}")
 

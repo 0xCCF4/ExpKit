@@ -13,7 +13,7 @@ class TaskOutput:
         self.success = success
 
 
-class StageTaskTemplate():
+class TaskTemplate():
     """Perform an operation on within a virtual environment."""
 
     @type_guard

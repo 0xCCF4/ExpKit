@@ -41,8 +41,12 @@ class PayloadType(IntEnum):
         return [value for value in PayloadType if value.is_project()]
 
     @staticmethod
-    def get_all_types():
-        return [value for value in PayloadType if value != PayloadType.UNKNOWN]
+    def get_all_types(include_empty=True):
+        return [value for value in PayloadType if value != PayloadType.UNKNOWN and (include_empty or value != PayloadType.EMPTY)]
+
+    @staticmethod
+    def get_all_file_types():
+        return [value for value in PayloadType if value.is_file()]
 
     def is_project(self):
         return self.name.endswith("_PROJECT")

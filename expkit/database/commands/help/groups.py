@@ -1,3 +1,4 @@
+import math
 import textwrap
 from typing import Optional, get_type_hints
 
@@ -43,15 +44,20 @@ class GroupInfoCommand(CommandTemplate):
 
                     PRINT.info(f"  Supported platforms:")
                     for entry in group.get_supported_platforms():
-                        PRINT.info(f"    - {entry.platform.name} ({entry.architecture.name}) | {entry.input_type} ({entry.dependencies}) -> {entry.output_type}")
+                        if len(entry.dependencies) == 0:
+                            PRINT.info(f"    - {entry.platform.name} ({entry.architecture.name}) - {entry.input_type} (no deps) -> {entry.output_type}")
+                        else:
+                            PRINT.info(f"    - {entry.platform.name} ({entry.architecture.name}) - {entry.input_type} ({entry.dependencies}) -> {entry.output_type}")
 
                     if len(group.stages) > 0:
                         PRINT.info(f"  Stages:")
                         for stage in group.stages:
                             PRINT.info(f"    - {stage}")
+                            max_length = math.floor(math.log10(len(stage.tasks))) + 1
+                            for i, task in enumerate(stage.tasks):
+                                PRINT.info(f"      {str(i+1).rjust(max_length, ' ')}. {'<ERROR>' if task is None else task.name}")
 
                     PRINT.info(f"")
-
 
         return True
 

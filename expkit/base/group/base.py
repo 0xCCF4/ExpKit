@@ -56,6 +56,10 @@ class GroupTemplate:
             if stage in self.stages:
                 return
 
+            for task in stage.tasks:
+                if task is None:
+                    LOGGER.warning(f"Stage {stage.name} has a None task. This may cause issues.")
+
             self._invalidate_cache()
             self.stages.append(stage)
 
@@ -124,18 +128,18 @@ class GroupTemplate:
             raise Exception("Multiple stages support the same platform-architecture-input-output combination.")
 
     @type_guard
-    def execute(self, payload: Payload, output_type: PayloadType, platform: Platform, architecture: Architecture, parameters: dict, build_directory: Path) -> Payload:
+    def execute(self, payload: Payload, dependencies: List[Payload], output_type: PayloadType, platform: Platform, architecture: Architecture, parameters: dict, build_directory: Path) -> Payload:
         LOGGER.info(f"Executing stage group {self.name} ({payload.type} -> {output_type}) on {platform} {architecture}")
 
         assert platform.is_single()
         assert architecture.is_single()
 
-        stage = self.get_stage(platform, architecture, payload.type, output_type)
+        stage = self.get_stage(platform, architecture, payload.type, [d.type for d in dependencies], output_type)
 
         if stage is None:
             raise Exception("No stage found for platform-architecture-input-output combination.")
 
-        payload = stage.execute(payload, output_type, platform, architecture, parameters, build_directory)
+        payload = stage.execute(payload, output_type, dependencies, platform, architecture, parameters, build_directory)
 
         if payload.type != output_type:
             raise Exception("Stage did not produce the expected output type.")

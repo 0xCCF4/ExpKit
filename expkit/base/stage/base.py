@@ -7,7 +7,7 @@ from expkit.base.architecture import TargetPlatform
 from expkit.base.logger import get_logger
 from expkit.base.payload import PayloadType, Payload
 from expkit.base.stage.context import StageContext
-from expkit.base.task.base import StageTaskTemplate
+from expkit.base.task.base import TaskTemplate
 from expkit.base.utils.type_checking import type_guard
 
 
@@ -24,7 +24,7 @@ class StageTemplate():
         self.platform = platform
         self.required_parameters = required_parameters
 
-        self.tasks: List[StageTaskTemplate] = []
+        self.tasks: List[TaskTemplate] = []
 
         assert not self.__module__.startswith("expkit.") or self.__module__ == f"expkit.database.{self.name}", f"{self.__module__} must be named expkit.database.{self.name} or originiate from other package"
         assert self.name.startswith("stages."), f"{self.name} must start with 'tasks.'"
@@ -82,7 +82,7 @@ class StageTemplate():
     def finish_build(self, context: StageContext) -> Payload:
         raise NotImplementedError("Not implemented")
 
-    def execute_task(self, context: StageContext, index: int, task: StageTaskTemplate):
+    def execute_task(self, context: StageContext, index: int, task: TaskTemplate):
         raise NotImplementedError("Not implemented")
 
     @type_guard

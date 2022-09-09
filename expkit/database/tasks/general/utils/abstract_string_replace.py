@@ -6,7 +6,7 @@ from typing import List, Optional, Callable, Dict, Tuple
 from expkit.base.logger import get_logger
 from expkit.base.architecture import TargetPlatform
 from expkit.base.stage.base import StageTemplate
-from expkit.base.task.base import StageTaskTemplate, TaskOutput
+from expkit.base.task.base import TaskTemplate, TaskOutput
 from expkit.base.utils.base import error_on_fail
 from expkit.base.utils.type_checking import check_dict_types
 from expkit.framework.database import register_task
@@ -15,7 +15,7 @@ from expkit.framework.database import register_task
 LOGGER = get_logger(__name__)
 
 
-class AbstractStringReplace(StageTaskTemplate):
+class AbstractStringReplace(TaskTemplate):
     def __init__(self, name: str, description: str, platform: TargetPlatform, required_parameters: dict):
         super().__init__(
             name=name,

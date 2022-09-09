@@ -75,7 +75,7 @@ class CommandTemplate:
 
         return self._execute_command(options, *args)
 
-    def add_child_command(self, child: "CommandTemplate"):
+    def add_command(self, child: "CommandTemplate"):
         if len(child.name) <= 1:
             raise ValueError("Invalid command name")
         if child.name in [c.name for c in self.children]:

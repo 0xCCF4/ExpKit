@@ -4,7 +4,7 @@ from expkit.base.architecture import TargetPlatform
 from expkit.base.payload import Payload, PayloadType
 from expkit.base.stage.base import StageTemplate
 from expkit.base.stage.context import StageContext
-from expkit.base.task.base import StageTaskTemplate
+from expkit.base.task.base import TaskTemplate
 from expkit.base.utils.files import recursive_foreach_file
 from expkit.database.tasks.general.utils.tar_folder import TarTaskOutput
 from expkit.framework.database import register_stage, TaskDatabase, auto_stage_group
@@ -24,10 +24,10 @@ class CSharpObfuscationStage(StageTemplate):
         )
 
         self.tasks.append(TaskDatabase.get_instance().get_task("tasks.general.utils.untar_folder"))
-        self.tasks.append(TaskDatabase.get_instance().get_task("task.obfuscation.csharp.string_transform_template"))
+        self.tasks.append(TaskDatabase.get_instance().get_task("tasks.obfuscation.csharp.string_transform_template"))
         self.tasks.append(TaskDatabase.get_instance().get_task("tasks.general.utils.tar_folder"))
 
-    def execute_task(self, context: StageContext, index: int, task: StageTaskTemplate):
+    def execute_task(self, context: StageContext, index: int, task: TaskTemplate):
         task_parameters = {}
 
         if task.name == "tasks.general.utils.untar_folder":

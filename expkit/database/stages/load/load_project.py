@@ -7,7 +7,7 @@ from expkit.base.architecture import TargetPlatform
 from expkit.base.payload import Payload, PayloadType
 from expkit.base.stage.base import StageTemplate
 from expkit.base.stage.context import StageContext
-from expkit.base.task.base import StageTaskTemplate
+from expkit.base.task.base import TaskTemplate
 from expkit.database.tasks.general.utils.tar_folder import TarTaskOutput
 from expkit.framework.database import register_stage, TaskDatabase, auto_stage_group
 
@@ -41,7 +41,7 @@ class LoadProject(StageTemplate):
 
         context.set("target_format", target_format)
 
-    def execute_task(self, context: StageContext, index: int, task: StageTaskTemplate):
+    def execute_task(self, context: StageContext, index: int, task: TaskTemplate):
         task_parameters = {}
 
         if task.name == "tasks.general.utils.copy_template_folder":

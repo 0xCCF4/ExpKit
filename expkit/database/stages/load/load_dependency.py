@@ -4,7 +4,7 @@ from expkit.base.architecture import TargetPlatform
 from expkit.base.payload import Payload, PayloadType
 from expkit.base.stage.base import StageTemplate
 from expkit.base.stage.context import StageContext
-from expkit.base.task.base import StageTaskTemplate
+from expkit.base.task.base import TaskTemplate
 from expkit.framework.database import register_stage, auto_stage_group
 
 
@@ -30,7 +30,7 @@ class LoadDependency(StageTemplate):
         if dependency.payload_type != context.get("target_format"):
             raise Exception(f"Dependency {dependency} is not of the required type {context.get('target_format')}.")
 
-    def execute_task(self, context: StageContext, index: int, task: StageTaskTemplate):
+    def execute_task(self, context: StageContext, index: int, task: TaskTemplate):
         raise Exception("This stage does not have any tasks.")
 
     def finish_build(self, context: StageContext) -> Payload:
