@@ -65,6 +65,7 @@ class TextTemplateEngine(StageTemplate):
                     LOGGER.debug(f" - [SKIP] {file}")
 
             task_parameters["files"] = transform_params
+            task_parameters["replacements"] = context.parameters.get("TPL_VARIABLES", {})
 
             status = task.execute(task_parameters, context.build_directory, self)
 
