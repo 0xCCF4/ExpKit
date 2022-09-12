@@ -1,7 +1,9 @@
 import textwrap
 import threading
+import time
 import urllib
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from socketserver import ThreadingMixIn
 from urllib.parse import urlparse
 
 from expkit.base.architecture import Platform, Architecture
@@ -38,7 +40,10 @@ class ServerCommand(CommandTemplate):
             '''))
 
         self.__lock = threading.Lock()
+        self.__request_lock = threading.Lock()
         self.token = None
+
+        self.request_counter = 0
 
     @staticmethod
     def get_instance():
@@ -80,8 +85,11 @@ class ServerCommand(CommandTemplate):
                 def do_GET(self):
                     ServerCommand.get_instance().handle_request(self)
 
+            class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
+                pass
+
             try:
-                with HTTPServer((str(ip), port), RequestHandler) as httpd:
+                with ThreadedHTTPServer((str(ip), port), RequestHandler) as httpd:
                     httpd.serve_forever()
             except KeyboardInterrupt:
                 LOGGER.info("Stopping server")
@@ -96,6 +104,14 @@ class ServerCommand(CommandTemplate):
         handler.protocol_version = "HTTP/1.1"
         url = urlparse(handler.path)
         query = urllib.parse.parse_qs(url.query)
+
+
+        with self.__request_lock:
+            LOGGER.info(f"Received request")
+            LOGGER.info(f"   URL: {url.path}")
+            LOGGER.info(f"   Query: {query}")
+            LOGGER.info(f"   IP: {handler.client_address[0]}")
+            LOGGER.info(f"   Port: {handler.client_address[1]}")
 
         platform = query.get("platform", ["DUMMY"])[0]
         arch = query.get("arch", ["DUMMY"])[0]
@@ -134,12 +150,15 @@ class ServerCommand(CommandTemplate):
         # TODO: validate stuff
 
         handler.send_response(200)
-        handler.send_header("Content-type", "application/json")
+        handler.send_header("Content-type", "text/plain")
         handler.send_header(f"Keep-Alive", f"timeout={60 * 30}, max=1")  # 30 minutes
         handler.end_headers()
 
         # TODO: build stuff
+        time.sleep(10) # TODO: remove
 
         # TODO: send stuff
 
-        handler.wfile.write(b"Hello World !")
+        with self.__request_lock:
+            self.request_counter += 1
+            handler.wfile.write(f"Hello World {self.request_counter}!".encode("utf-8"))

@@ -16,7 +16,6 @@ LOGGER = get_logger(__name__)
 class ParserBlock:
     def __init__(self, parent: 'ParserBlock' = None):
         self.parent = parent
-        self.template = None
         self.config = {}
         self._config_cache = None
 
@@ -67,6 +66,7 @@ class RootElement(ParserBlock):
         super().__init__(None)
         self.artifacts: Dict[str, ArtifactElement] = {}
         self.platforms: TargetPlatform = TargetPlatform.NONE
+        self.build_order: List[ArtifactElement] = []
 
     def get_block_type(self) -> str:
         return "root"
@@ -140,6 +140,7 @@ class StageElement(ParserBlock):
         self.stage_name: str = ""
         self.stage_index: int = -1
         self.dependencies: Dict[str, Union[ArtifactElement, str]] = {}
+        self.template = None
 
     def get_block_type(self) -> str:
         return "stage"
@@ -298,6 +299,8 @@ class ConfigParser:
         topological_sort = list(nx.topological_sort(self._dependency_graph))
         topological_sort.reverse()
         self.build_order = topological_sort
+
+        self._root.build_order = [self.get_artifact(x) for x in self.build_order]
 
         LOGGER.debug(f"Building artifacts {', '.join(self.build_order)}")
 

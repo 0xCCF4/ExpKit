@@ -1,5 +1,6 @@
 # Runtime dependencies
 networkx==2.8.6
+pycryptodome==3.15.0
 
 # Test dependencies
 pytest>=7.1.2

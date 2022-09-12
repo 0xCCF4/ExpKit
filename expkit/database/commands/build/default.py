@@ -24,4 +24,6 @@ class ServerCommand(CommandTemplate):
         parser = ConfigParser()
         root = parser.parse(options.config)
 
+
+
         return True
