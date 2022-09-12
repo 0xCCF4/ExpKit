@@ -165,7 +165,7 @@ def main():
     else:
         cmd, cmd_args = m
         LOGGER.info(f"Executing command {cmd.name[1:]}")
-        if not cmd.execute(CommandOptions(config, artifacts, output_dir, args.threads), *cmd_args):
+        if not cmd.execute(CommandOptions(config, artifacts, output_dir, args.threads, args.verbose or args.debug), *cmd_args):
             PRINT.info(f"\n{parser.format_help()}\n")
 
     LOGGER.debug("Exiting...")

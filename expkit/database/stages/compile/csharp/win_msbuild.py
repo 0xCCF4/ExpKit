@@ -21,7 +21,7 @@ LOGGER = get_logger(__name__)
 class CompileCSharpWindows(StageTemplate):
     def __init__(self):
         super().__init__(
-            name="stages.compile.win.csharp",
+            name="stages.compile.csharp.win_msbuild",
             description="Compiles C# source code to a binary.",
             platform=TargetPlatform.WINDOWS,
             required_parameters={

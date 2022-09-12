@@ -25,12 +25,12 @@ class StageInfoCommand(CommandTemplate):
         db = StageDatabase.get_instance()
 
         if len(args) == 1 and args[0] == "all":
-            args = tuple([s.name for s in db.stages.values()])
+            args = tuple(sorted([s.name for s in db.stages.values()]))
 
         if len(args) == 0:
             PRINT.info(f"Printing list of all stages")
-            for stage in db.stages.values():
-                PRINT.info(f" - {stage.name}")
+            for stage in sorted([stage.name for stage in db.stages.values()]):
+                PRINT.info(f" - {stage}")
             PRINT.info("")
         else:
             for name in args:
@@ -57,14 +57,14 @@ class StageInfoCommand(CommandTemplate):
                     for dependencies in dependency_types:
                         PRINT.info(f"    - {dependencies}")
 
-                    PRINT.info(f"  Supported payload types:")
-
-                    for input_type in stage.get_supported_input_payload_types():
-                        for dependencies in dependency_types:
-                            if len(dependencies) <= 0:
-                                PRINT.info(f"    - {input_type} (no dependencies) -> {stage.get_output_payload_type(input_type, dependencies)}")
-                            else:
-                                PRINT.info(f"    - {input_type} ({dependencies}) -> {stage.get_output_payload_type(input_type, dependencies)}")
+                    if options.verbose:
+                        PRINT.info(f"  Supported payload types:")
+                        for input_type in stage.get_supported_input_payload_types():
+                            for dependencies in dependency_types:
+                                if len(dependencies) <= 0:
+                                    PRINT.info(f"    - {input_type} (no dependencies) -> {stage.get_output_payload_type(input_type, dependencies)}")
+                                else:
+                                    PRINT.info(f"    - {input_type} ({dependencies}) -> {stage.get_output_payload_type(input_type, dependencies)}")
 
                     if len(stage.required_parameters) > 0:
                         PRINT.info(f"  Config parameters:")

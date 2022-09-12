@@ -25,12 +25,12 @@ class TaskInfoCommand(CommandTemplate):
         db = TaskDatabase.get_instance()
 
         if len(args) == 1 and args[0] == "all":
-            args = tuple([s.name for s in db.tasks.values()])
+            args = tuple(sorted([s.name for s in db.tasks.values()]))
 
         if len(args) == 0:
             PRINT.info(f"Printing list of all tasks")
-            for stage in db.tasks.values():
-                PRINT.info(f" - {stage.name}")
+            for task in sorted([task.name for task in db.tasks.values()]):
+                PRINT.info(f" - {task}")
             PRINT.info("")
         else:
             for name in args:

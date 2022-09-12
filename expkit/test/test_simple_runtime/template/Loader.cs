@@ -1,6 +1,4 @@
-﻿#define P_TEST_INT 3 // default value
-
-using System;
+﻿using System;
 using System.Runtime.InteropServices;
 
 namespace T_NAMESPACE

@@ -42,11 +42,12 @@ class CommandArgumentCount:
 
 class CommandOptions:
 
-    def __init__(self, config: Optional[dict], artifacts: Optional[List[str]], output_directory: Optional[Path], num_threads: int):
+    def __init__(self, config: Optional[dict], artifacts: Optional[List[str]], output_directory: Optional[Path], num_threads: int, verbose: bool):
         self.config = config
         self.artifacts = artifacts
         self.output_directory = output_directory
         self.num_threads = num_threads
+        self.verbose = verbose
 
 
 class CommandTemplate:

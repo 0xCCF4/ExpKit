@@ -26,11 +26,11 @@ class GroupInfoCommand(CommandTemplate):
         db = GroupDatabase.get_instance()
 
         if len(args) == 1 and args[0] == "all":
-            args = tuple([s.name for s in db.groups.values()])
+            args = tuple(sorted([s.name for s in db.groups.values()]))
 
         if len(args) == 0:
             PRINT.info(f"Printing list of all groups")
-            for stage in db.groups.values():
+            for stage in sorted(db.groups.values()):
                 PRINT.info(f" - {stage.name}")
             PRINT.info("")
         else:
@@ -42,17 +42,32 @@ class GroupInfoCommand(CommandTemplate):
                     PRINT.info(f"Group '{name}'")
                     PRINT.info(textwrap.fill(f"Description: {group.description}", initial_indent='  ', subsequent_indent='    '))
 
-                    PRINT.info(f"  Supported platforms:")
-                    for entry in group.get_supported_platforms():
-                        if len(entry.dependencies) == 0:
-                            PRINT.info(f"    - {entry.platform.name} ({entry.architecture.name}) - {entry.input_type} (no deps) -> {entry.output_type}")
-                        else:
-                            PRINT.info(f"    - {entry.platform.name} ({entry.architecture.name}) - {entry.input_type} ({entry.dependencies}) -> {entry.output_type}")
+                    if options.verbose:
+                        PRINT.info(f"  Supported platforms:")
+                        for entry in group.get_supported_platforms():
+                            if len(entry.dependencies) == 0:
+                                PRINT.info(f"    - {entry.platform.name} ({entry.architecture.name}) - {entry.input_type} (no deps) -> {entry.output_type}")
+                            else:
+                                PRINT.info(f"    - {entry.platform.name} ({entry.architecture.name}) - {entry.input_type} ({entry.dependencies}) -> {entry.output_type}")
 
                     if len(group.stages) > 0:
                         PRINT.info(f"  Stages:")
                         for stage in group.stages:
                             PRINT.info(f"    - {stage}")
+
+                            for k, v in stage.required_parameters.items():
+                                PRINT.info(f"      ~ {k}: {v}")
+
+                            deps = stage.get_supported_dependency_types()
+                            assert len(deps) >= 1
+                            if len(deps) == 1 and len(deps[0]) == 0:
+                                PRINT.info(f"      ~ No dependencies")
+                            else:
+                                PRINT.info(f"      ~ Dependencies required: {sorted(set([len(d) for d in deps]))}")
+
+                            if not options.verbose:
+                                continue
+
                             max_length = math.floor(math.log10(max(1, len(stage.tasks)))) + 1
                             for i, task in enumerate(stage.tasks):
                                 PRINT.info(f"      {str(i+1).rjust(max_length, ' ')}. {'<ERROR>' if task is None else task.name}")

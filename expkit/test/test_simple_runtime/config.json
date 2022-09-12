@@ -1,17 +1,10 @@
 {
   "__comment1": "Default parameters",
   "config": {
-    "__comment1": "net specific parameters",
-    "NET_TARGET_FRAMEWORK": "net35",
-    
-    "__comment2": "program parameters",
-    "P_TEST_INT": "11",
-    
-    "__comment3": "general parameters",
     "BUILD_TYPE": "Debug"
   },
 
-  "__comment2": "Target platforms",
+  "__comment2": "Manually restrict target platforms",
   "platforms": [
     "ALL"
   ],
@@ -20,10 +13,6 @@
   "artifacts": {
 
     "base": {
-      "platforms": [
-        "WINDOWS"
-      ],
-
       "stages": [
         {
           "name": "LOAD_FOLDER",
@@ -35,39 +24,41 @@
       ]
     },
 
-    "test_66_base64": {
-      "__comment1": "artifact specific configuration",
-      "config": {
-        "P_TEST_INT": "66"
-      },
-      
+    "test_42": {
       "stages": [
         {
           "name": "LOAD_DEPENDENCY",
           "dependencies":  ["base"]
         },
-        { "name": "TEMPLATE_ENGINE" },
+        {
+          "name": "TEMPLATE_ENGINE",
+          "config": {
+            "TPL_VARIABLES": {
+              "P_TEST_INT": "42"
+            }
+          }
+        },
         {
           "name": "OBFUSCATE_CSHARP",
           "config": {
-            "__comment1": "obfuscation specific configuration",
             "OBF_STRING_ENCODING": "base64"
           }
         },
         { "name": "COMPILE_CSHARP" },
         {
-          "name": "ARTIFACT_EXPORT",
+          "name": "EXPORT",
           "config": {
-            "EXPORT_FOLDER_PATH": "./build66.exe"
+            "EXPORT_FOLDER_PATH": "./build-42.exe"
           }
         }
       ]
     },
     
     "test_33": {
-      "__comment1": "artifact specific configuration",
       "config": {
-        "P_TEST_INT": "33"
+        "TPL_VARIABLES": {
+          "P_TEST_INT": "33"
+        }
       },
       
       "stages": [
@@ -85,13 +76,12 @@
         },
         { "name": "COMPILE_CSHARP" },
         {
-          "name": "ARTIFACT_EXPORT",
+          "name": "EXPORT",
           "config": {
             "EXPORT_FOLDER_PATH": "./build33.exe"
           }
         }
       ]
     }
-    
   }
 }
