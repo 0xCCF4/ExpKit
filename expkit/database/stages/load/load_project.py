@@ -26,8 +26,8 @@ class LoadProject(StageTemplate):
             }
         )
 
-        self.tasks.append(TaskDatabase.get_instance().get_task("tasks.general.utils.copy_template_folder"))
-        self.tasks.append(TaskDatabase.get_instance().get_task("tasks.general.utils.tar_folder"))
+        self.add_task("tasks.general.utils.copy_template_folder")
+        self.add_task("tasks.general.utils.tar_folder")
 
     def prepare_build(self, context: StageContext):
         super().prepare_build(context)

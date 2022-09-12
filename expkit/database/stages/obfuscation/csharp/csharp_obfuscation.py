@@ -23,9 +23,11 @@ class CSharpObfuscationStage(StageTemplate):
             }
         )
 
-        self.tasks.append(TaskDatabase.get_instance().get_task("tasks.general.utils.untar_folder"))
-        self.tasks.append(TaskDatabase.get_instance().get_task("tasks.obfuscation.csharp.string_transform_template"))
-        self.tasks.append(TaskDatabase.get_instance().get_task("tasks.general.utils.tar_folder"))
+        self.add_task("tasks.general.utils.untar_folder")
+        self.add_task("tasks.obfuscation.csharp.string_transform_template")
+        self.add_task("tasks.general.utils.tar_folder")
+
+        assert len(self.tasks) == 0 or len(self.tasks) == 3
 
     def execute_task(self, context: StageContext, index: int, task: TaskTemplate):
         task_parameters = {}

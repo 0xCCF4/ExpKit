@@ -11,8 +11,7 @@ class PayloadType(IntEnum):
     EMPTY = auto()
 
     # Compiled executable and shared libraries
-    DOTNET_DLL = auto()
-    DOTNET_EXE = auto()
+    DOTNET_BINARY = auto()
 
     NATIVE_STATIC_EXE = auto()
     NATIVE_DYNAMIC_EXE = auto()

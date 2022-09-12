@@ -175,7 +175,7 @@ def build_databases():
             description = descriptions[0]
             group_obj = GroupDatabase.get_instance().add_group(GroupTemplate(group, description))
 
-        LOGGER.debug(f"Auto-grouping {group}")
+        LOGGER.debug(f" - auto-grouping {group}")
 
         for stage, _ in data:
             stage_obj = StageDatabase.get_instance().get_stage(stage)
@@ -183,7 +183,7 @@ def build_databases():
             if stage_obj is None:
                 raise ValueError(f"Stage {stage} does not exist and cannot be auto-grouped")
 
-            LOGGER.debug(f" - grouping {stage}")
+            LOGGER.debug(f"   - grouping {stage}")
             group_obj.add_stage(stage_obj)
 
     commands_buffer: List[CommandTemplate] = []

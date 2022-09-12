@@ -1,7 +1,8 @@
+import importlib
 import inspect
 import os
 from pathlib import Path
-from typing import List, Optional, Dict, Type
+from typing import List, Optional, Dict, Type, Union
 
 from expkit.base.architecture import TargetPlatform
 from expkit.base.logger import get_logger
@@ -10,8 +11,8 @@ from expkit.base.stage.context import StageContext
 from expkit.base.task.base import TaskTemplate
 from expkit.base.utils.type_checking import type_guard
 
-
 LOGGER = get_logger(__name__)
+_task_database = None
 
 
 class StageTemplate():
@@ -29,6 +30,23 @@ class StageTemplate():
         assert not self.__module__.startswith("expkit.") or self.__module__ == f"expkit.database.{self.name}", f"{self.__module__} must be named expkit.database.{self.name} or originiate from other package"
         assert self.name.startswith("stages."), f"{self.name} must start with 'tasks.'"
 
+    @type_guard
+    def add_task(self, task: Union[TaskTemplate, str]):
+        global _task_database
+        if isinstance(task, str):
+            if _task_database is None:
+                # Break circular import
+                _task_database = getattr(importlib.import_module("expkit.framework.database"), "TaskDatabase", None)
+
+            assert _task_database is not None
+            task = _task_database.get_instance().get_task(task)
+
+        if task is None:
+            return
+
+        assert self.platform in self._get_task_platform_intersection(), f"Stage {self.name} target platform is not compatible with task {task.name}. Difference {self.platform.difference(self._get_task_platform_intersection())}"
+        self.tasks.append(task)
+
     def get_supported_input_payload_types(self) -> List[PayloadType]:
         raise NotImplementedError("Not implemented")
 
@@ -37,6 +55,13 @@ class StageTemplate():
 
     def get_supported_dependency_types(self) -> List[List[PayloadType]]:
         return [[]]
+
+    def _get_task_platform_intersection(self) -> TargetPlatform:
+        platform = TargetPlatform.ALL
+        for task in self.tasks:
+            platform = platform.intersection(task.platform)
+
+        return platform
 
     def is_supporting_dependencies(self, context: StageContext) -> bool:
         supported_all = self.get_supported_dependency_types()

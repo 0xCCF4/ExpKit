@@ -7,7 +7,7 @@ from expkit.database.tasks.general.utils.abstract_string_replace import Abstract
 from expkit.framework.database import register_task
 
 
-TRANSFORMATIONS: Dict[str, Callable[[str], str]] = {}
+TRANSFORMATIONS: Dict[str, Callable[["CSharpStringTransformTemplateTask", dict, dict], Callable[[str], str]]] = {}
 
 
 def register_csharp_string_transform_func(*args, **kwargs):
@@ -64,12 +64,13 @@ class CSharpStringTransformTemplateTask(AbstractStringReplace):
             raise ValueError(f"Unknown string encoding {method}")
 
         LOGGER.debug(f"Transforming strings using {method}")
-        return self._transform(source, transform)
+        return self._transform(source, parameters, transform)
 
-    def _transform(self, source: str, transform: Callable[[str], str]) -> str:
+    def _transform(self, source: str, parameters: dict, transform: Callable[["CSharpStringTransformTemplateTask", dict, dict], Callable[[str], str]]) -> str:
+        context = {}
         with self._lock:
             self.__status = STATUS_NORMAL
-            self.__transform_func = transform
+            self.__transform_func = transform(self, parameters, context)
 
             old_source = ""
             cmp = re.compile(r'(@)?(\"[^\"]|\"\")', re.MULTILINE | re.DOTALL)

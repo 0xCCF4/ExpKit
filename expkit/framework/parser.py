@@ -308,7 +308,7 @@ class ConfigParser:
                 group = GroupDatabase.get_instance().get_group(stage_block.stage_name)
 
                 if group is None:
-                    LOGGER.error(f"Unable to find stage group {stage_block}")
-                    raise RuntimeError(f"Unable to find stage group {stage_block}")
+                    LOGGER.error(f"Unable to find group {stage_block}")
+                    raise RuntimeError(f"Unable to find group {stage_block}")
 
                 stage_block.template = group

@@ -203,6 +203,13 @@ class TargetPlatform(metaclass=_PAMeta):
                 tp._add_pair(*pair)
         return tp
 
+    def difference(self, other: "TargetPlatform") -> "TargetPlatform":
+        tp = TargetPlatform()
+        for pair in self:
+            if pair not in other:
+                tp._add_pair(*pair)
+        return tp
+
     def is_empty(self):
         return len(self._pairs) == 0
 
