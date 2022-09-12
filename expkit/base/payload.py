@@ -1,5 +1,8 @@
 import copy
+import json
+from base64 import b64encode
 from enum import IntEnum, auto
+from json import JSONEncoder
 from typing import Optional
 
 from expkit.base.architecture import TargetPlatform
@@ -84,7 +87,7 @@ class Payload():
         return self.content.hex()
 
     def get_meta(self) -> dict:
-        return self.meta
+        return copy.deepcopy(self.meta)
 
     @type_guard
     def copy(self, type: Optional[PayloadType] = None, content: Optional[bytes] = None, meta: Optional[dict] = None):
@@ -98,3 +101,15 @@ class Payload():
             payload.meta = meta
 
         return payload
+
+    def get_json_metadata(self) -> str:
+        meta = self.get_meta()
+
+        class Base64Encoder(JSONEncoder):
+            def default(self, o):
+                if isinstance(o, bytes):
+                    return b64encode(o).decode()
+                return JSONEncoder.default(self, o)
+
+        return json.dumps(meta, cls=Base64Encoder)
+

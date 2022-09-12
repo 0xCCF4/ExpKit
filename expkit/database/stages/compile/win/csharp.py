@@ -36,9 +36,8 @@ class CompileCSharpWindows(StageTemplate):
 
         self.add_task("tasks.general.utils.untar_folder")
         self.add_task("tasks.compile.msbuild_project")
-        self.add_task("tasks.general.utils.tar_folder")
 
-        assert len(self.tasks) == 0 or len(self.tasks) == 3
+        assert len(self.tasks) == 0 or len(self.tasks) == 2
 
     def execute_task(self, context: StageContext, index: int, task: TaskTemplate):
         task_parameters = {}
@@ -87,7 +86,7 @@ class CompileCSharpWindows(StageTemplate):
             if net_info["net_output"] is None or net_info["net_framework"] is None:
                 raise Exception("Failed to parse .csproj file.")
 
-            context.set("build_info", {**net_info, "net_type": task_parameters["BUILD_TYPE"]})
+
 
             task_parameters["BUILD_PROJECT_FILE"] = project_file
 
@@ -96,17 +95,29 @@ class CompileCSharpWindows(StageTemplate):
             if not status.success:
                 raise Exception("Failed to compile C# project.")
 
-        elif task.name == "tasks.general.utils.tar_folder":
-            task_parameters["folder"] = context.build_directory
+            output_file = context.build_directory / "bin" / task_parameters["BUILD_TYPE"] / net_info["net_framework"]
+            if net_info["net_output"] == "Exe" or net_info["net_output"] == "WinExe":
+                output_file = output_file / (project_file.stem + ".exe")
+            elif net_info["net_output"] == "Library":
+                output_file = output_file / (project_file.stem + ".dll")
+            else:
+                raise Exception("Unknown output type.")
 
-            status = task.execute(task_parameters, context.build_directory, self)
+            if not output_file.exists() or not output_file.is_file():
+                raise Exception("Failed to find output file.")
 
-            if not status.success:
-                raise Exception("Failed to tar folder.")
+            net_pdbs = context.initial_payload.get_meta().get("net_pdbs", {})
 
-            assert isinstance(status, TarTaskOutput)
+            pdb_file = output_file.with_suffix(".pdb")
+            if pdb_file.exists() and pdb_file.is_file():
+                i = 0
+                while (i == 0 and f"{project_file.stem}.pdb" in net_pdbs) or f"{project_file.stem}_{i}.pdb" in net_pdbs:
+                    i += 1
+                key = f"{project_file.stem}_{i}.pdb" if i > 0 else f"{project_file.stem}.pdb"
+                net_pdbs[key] = pdb_file
 
-            context.set("output", status.data)
+            context.set("build_info", {**net_info, "net_type": task_parameters["BUILD_TYPE"], "net_pdb": net_pdbs, "name_hint": output_file.name})
+            context.set("output", output_file.read_bytes())
 
     def finish_build(self, context: StageContext) -> Payload:
         assert context.get("output") is not None
@@ -115,7 +126,7 @@ class CompileCSharpWindows(StageTemplate):
         meta = {**meta, **context.get("build_info")}
 
         return context.initial_payload.copy(
-            type=PayloadType.CSHARP_PROJECT,
+            type=PayloadType.DOTNET_BINARY,
             content=context.get("output"),
             meta=meta
         )

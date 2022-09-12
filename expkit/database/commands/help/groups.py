@@ -53,7 +53,7 @@ class GroupInfoCommand(CommandTemplate):
                         PRINT.info(f"  Stages:")
                         for stage in group.stages:
                             PRINT.info(f"    - {stage}")
-                            max_length = math.floor(math.log10(len(stage.tasks))) + 1
+                            max_length = math.floor(math.log10(max(1, len(stage.tasks)))) + 1
                             for i, task in enumerate(stage.tasks):
                                 PRINT.info(f"      {str(i+1).rjust(max_length, ' ')}. {'<ERROR>' if task is None else task.name}")
 
