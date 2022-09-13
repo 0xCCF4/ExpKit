@@ -35,8 +35,8 @@ class LoadProject(StageTemplate):
 
         assert len(self.tasks) == 0 or len(self.tasks) == 1
 
-    def execute_task(self, context: StageContext, index: int, task: TaskTemplate):
-        task_parameters = {}
+    def prepare_build(self, context: StageContext):
+        super().prepare_build(context)
 
         project = context.initial_payload.type.is_project()
         file = context.initial_payload.type.is_file()
@@ -56,8 +56,17 @@ class LoadProject(StageTemplate):
                 shutil.rmtree(export_folder_path / export_name)
             (export_folder_path / export_name).mkdir(parents=True)
 
+        context.set("project", project)
+        context.set("file", file)
+        context.set("export_target", export_folder_path / export_name)
+
+    def execute_task(self, context: StageContext, index: int, task: TaskTemplate):
+        task_parameters = {}
+
+
+
         if task.name == "tasks.general.utils.untar_folder":
-            if project:
+            if context.get("project"):
                 task_parameters["folder"] = context.build_directory
                 task_parameters["tarfile"] = context.initial_payload.get_content()
 
@@ -67,10 +76,10 @@ class LoadProject(StageTemplate):
                     raise Exception("Failed to untar folder.")
 
                 (context.build_directory / "info.json").write_text(context.initial_payload.get_json_metadata())
-                shutil.copytree(context.build_directory, export_folder_path / export_name)
+                shutil.copytree(context.build_directory, context.get("export_target"))
 
-            if file:
-                target_file = export_folder_path / export_name
+            if context.get("file"):
+                target_file = context.get("export_target")
                 target_file.write_bytes(context.initial_payload.get_content())
 
                 target_file = target_file.with_suffix(".json")

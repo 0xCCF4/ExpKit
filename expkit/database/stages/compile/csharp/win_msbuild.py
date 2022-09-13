@@ -39,6 +39,40 @@ class CompileCSharpWindows(StageTemplate):
 
         assert len(self.tasks) == 0 or len(self.tasks) == 2
 
+    def prepare_build(self, context: StageContext):
+        super().prepare_build(context)
+
+        project_file_name = context.parameters.get("BUILD_PROJECT_FILENAME", None)
+
+        project_file = None
+
+        if project_file_name is None:
+            found = False
+            for file in context.build_directory.iterdir():
+                if file.exists() and file.is_file() and file.suffix == ".csproj":
+                    project_file = file
+                    if not found:
+                        found = True
+                    else:
+                        LOGGER.error(f"Multiple project files found in {context.build_directory.absolute()}")
+                        raise Exception("Multiple project files found.")
+            if not found:
+                LOGGER.error(f"No project files found in {context.build_directory.absolute()}")
+                raise Exception("No project files found.")
+
+        if project_file_name is not None:
+            project_file = context.build_directory / project_file_name
+
+            if not project_file.exists() or not project_file.is_file() or not project_file.suffix == ".csproj":
+                raise Exception("Specified project file does not exist or is not a valid .csproj file.")
+
+        net_info = self._parse_csproj(project_file)
+        if net_info["net_output"] is None or net_info["net_framework"] is None:
+            raise Exception("Failed to parse .csproj file.")
+
+        context.set("project_file", project_file)
+        context.set("net_info", net_info)
+
     def execute_task(self, context: StageContext, index: int, task: TaskTemplate):
         task_parameters = {}
 
@@ -58,35 +92,8 @@ class CompileCSharpWindows(StageTemplate):
             task_parameters["BUILD_CONSTANTS"] = context.parameters.get("BUILD_CONSTANTS", None)
             task_parameters["BUILD_MSBUILD_EXE"] = context.parameters.get("BUILD_MSBUILD_EXE", None)
 
-            project_file_name = context.parameters.get("BUILD_PROJECT_FILENAME", None)
-
-            project_file = None
-
-            if project_file_name is None:
-                found = False
-                for file in context.build_directory.iterdir():
-                    if file.exists() and file.is_file() and file.suffix == ".csproj":
-                        project_file = file
-                        if not found:
-                            found = True
-                        else:
-                            LOGGER.error(f"Multiple project files found in {context.build_directory.absolute()}")
-                            raise Exception("Multiple project files found.")
-                if not found:
-                    LOGGER.error(f"No project files found in {context.build_directory.absolute()}")
-                    raise Exception("No project files found.")
-
-            if project_file_name is not None:
-                project_file = context.build_directory / project_file_name
-
-                if not project_file.exists() or not project_file.is_file() or not project_file.suffix == ".csproj":
-                    raise Exception("Specified project file does not exist or is not a valid .csproj file.")
-
-            net_info = self._parse_csproj(project_file)
-            if net_info["net_output"] is None or net_info["net_framework"] is None:
-                raise Exception("Failed to parse .csproj file.")
-
-
+            project_file = context.get("project_file")
+            net_info = context.get("net_info")
 
             task_parameters["BUILD_PROJECT_FILE"] = project_file
 

@@ -36,7 +36,7 @@ class LoadProject(StageTemplate):
         if target_format == PayloadType.UNKNOWN:
             raise Exception(f"Unknown target format {context.parameters['LOAD_TARGET_FORMAT']}")
 
-        if not target_format.name.endswith("_PROJECT"):
+        if not target_format.is_project():
             raise Exception(f"Target format {target_format} is not a PROJECT format.")
 
         context.set("target_format", target_format)

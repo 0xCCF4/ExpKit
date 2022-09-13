@@ -9,7 +9,8 @@ from expkit.base.logger import get_logger
 from expkit.base.payload import PayloadType, Payload
 from expkit.base.stage.context import StageContext
 from expkit.base.task.base import TaskTemplate
-from expkit.base.utils.type_checking import type_guard
+from expkit.base.utils.base import error_on_fail
+from expkit.base.utils.type_checking import type_guard, check_dict_types
 
 LOGGER = get_logger(__name__)
 _task_database = None
@@ -112,6 +113,8 @@ class StageTemplate():
 
     @type_guard
     def execute(self, payload: Payload, output_type: PayloadType, dependencies: List[Payload], parameters: dict, build_directory: Path) -> Payload:
+        error_on_fail(check_dict_types(parameters, self.required_parameters), "Stage parameters", TypeError)
+
         context: StageContext = StageContext(
             initial_payload=payload,
             output_type=output_type,

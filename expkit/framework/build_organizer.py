@@ -44,7 +44,7 @@ class BuildOrganizer:
             assert not self.__initialized, "BuildOrganizer can only be initialized once."
             self.__initialized = True
 
-            #self._payload_graph.add_node()
+
 
     def has_more_jobs(self) -> bool:
         with self.__lock:

@@ -33,6 +33,21 @@ class TextTemplateEngine(StageTemplate):
 
         assert len(self.tasks) == 0 or len(self.tasks) == 3
 
+    def prepare_build(self, context: StageContext):
+        super().prepare_build(context)
+
+        extensions = context.parameters.get("TPL_EXTENSIONS", None)
+        if extensions is None:
+            extensions = ["cs", "csproj", "sln", "c", "cpp", "h", "hpp", "txt", "md", "json", "xml", "yml", "yaml",
+                          "asm", "s", "ps1", "psm1"]
+        else:
+            LOGGER.debug("Using custom file extension list for template engine:")
+            for extension in extensions:
+                LOGGER.debug(f" - .{extension}")
+
+        context.set("TPL_EXTENSIONS", extensions)
+        context.set("TPL_VARIABLES", context.parameters.get("TPL_VARIABLES", {}))
+
     def execute_task(self, context: StageContext, index: int, task: TaskTemplate):
         task_parameters = {}
 
@@ -46,13 +61,7 @@ class TextTemplateEngine(StageTemplate):
                 raise Exception("Failed to untar folder.")
 
         elif task.name == "task.obfuscation.csharp.string_transform_template":
-            extensions = context.parameters.get("TPL_EXTENSIONS", None)
-            if extensions is None:
-                extensions = ["cs", "csproj", "sln", "c", "cpp", "h", "hpp", "txt", "md", "json", "xml", "yml", "yaml", "asm", "s", "ps1", "psm1"]
-            else:
-                LOGGER.debug("Using custom file extension list for template engine:")
-                for extension in extensions:
-                    LOGGER.debug(f" - .{extension}")
+            extensions = context.get("TPL_EXTENSIONS")
 
             files = []
             recursive_foreach_file(context.build_directory, lambda f: files.append(f))
@@ -67,13 +76,12 @@ class TextTemplateEngine(StageTemplate):
                     LOGGER.debug(f" - [SKIP] {file}")
 
             task_parameters["files"] = transform_params
-            task_parameters["replacements"] = context.parameters.get("TPL_VARIABLES", {})
+            task_parameters["replacements"] = context.get("TPL_VARIABLES", {})
 
             status = task.execute(task_parameters, context.build_directory, self)
 
             if not status.success:
                 raise Exception("Failed to transform strings.")
-
 
         elif task.name == "tasks.general.utils.tar_folder":
             task_parameters["folder"] = context.build_directory
