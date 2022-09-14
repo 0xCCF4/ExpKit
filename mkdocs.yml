@@ -1,0 +1,30 @@
+site_name: Exploit Kit
+site_dir: docs-build
+# site_url: https://exploitkit.github.io # TODO
+theme: material
+
+plugins:
+    - search
+    - macros:
+        module_name: expkit/docs/macros
+
+markdown_extensions:
+  - toc:
+      permalink: "&para;"
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - User Guide:
+    - Overview: user-guide/overview.md
+    - Installation: user-guide/installation.md
+    - Writing your first payload: user-guide/writing-your-first-payload.md
+  - Developer Guide:
+      - Overview: developer-guide/overview.md
+      - Contributing: about/contributing.md
+  - About:
+      - Contributing: about/contributors.md
+      - License: about/license.md
+
+watch:
+  - docs/

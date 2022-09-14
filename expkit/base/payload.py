@@ -26,6 +26,7 @@ class PayloadType(IntEnum):
 
     # Source code and other files
     POWERSHELL_SCRIPT = auto()
+
     CSHARP_PROJECT = auto()
 
     @staticmethod
