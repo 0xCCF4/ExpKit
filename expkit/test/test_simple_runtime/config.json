@@ -48,7 +48,7 @@
         {
           "name": "EXPORT",
           "config": {
-            "EXPORT_FOLDER_PATH": "./build-42.exe"
+            "EXPORT_NAME": "build-42.exe"
           }
         }
       ]
@@ -78,7 +78,7 @@
         {
           "name": "EXPORT",
           "config": {
-            "EXPORT_FOLDER_PATH": "./build33.exe"
+            "EXPORT_NAME": "build33.exe"
           }
         }
       ]

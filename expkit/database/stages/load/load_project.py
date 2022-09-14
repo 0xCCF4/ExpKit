@@ -7,6 +7,7 @@ from expkit.base.architecture import TargetPlatform
 from expkit.base.payload import Payload, PayloadType
 from expkit.base.stage.base import StageTemplate
 from expkit.base.stage.context import StageContext
+from expkit.base.stage.wrong_output_type_exception import SkipStageExecution
 from expkit.base.task.base import TaskTemplate
 from expkit.database.tasks.general.utils.tar_folder import TarTaskOutput
 from expkit.framework.database import register_stage, TaskDatabase, auto_stage_group
@@ -38,6 +39,9 @@ class LoadProject(StageTemplate):
 
         if not target_format.is_project():
             raise Exception(f"Target format {target_format} is not a PROJECT format.")
+
+        if target_format != context.output_type:
+            self._skip_execution(context, f"Can not produce {context.output_type} as {target_format} was requested as output.")
 
         context.set("target_format", target_format)
 
@@ -76,8 +80,11 @@ class LoadProject(StageTemplate):
         assert context.get("output") is not None
 
         return context.initial_payload.copy(
-            type=PayloadType.CSHARP_PROJECT,
+            type=context.get("target_format"),
             content=context.get("output"))
+
+    def _skip_execution(self, context, reason: str):
+        raise SkipStageExecution(self, context, reason)
 
     def get_supported_input_payload_types(self) -> List[PayloadType]:
         return [PayloadType.EMPTY]

@@ -4,6 +4,7 @@ from typing import Optional, List, Union, Dict
 import networkx as nx
 
 from expkit.base.architecture import TargetPlatform
+from expkit.base.group.base import GroupTemplate
 from expkit.base.logger import get_logger
 from expkit.base.utils.base import error_on_fail
 from expkit.base.utils.data import deepcopy_dict_remove_private
@@ -99,8 +100,8 @@ class ArtifactElement(ParserBlock):
     @type_guard
     def __init__(self, parent: RootElement):
         super().__init__(parent)
-        self.stages: List[StageElement] = []
-        self.dependencies: Dict[str, Union[ArtifactElement, str]] = {}
+        self.groups: List[GroupElement] = []
+        self.dependencies: List[ArtifactElement] = []
         self.artifact_name: str = None
         self.platforms: TargetPlatform = TargetPlatform.NONE
 
@@ -122,25 +123,24 @@ class ArtifactElement(ParserBlock):
 
         block = ArtifactElement(parent=parent)
         block.config = deepcopy_dict_remove_private(data.get("config", {}))
-        block.dependencies = copy.deepcopy(data.get("dependencies", []))
-        block.stages = []
+        block.groups = []
         block.artifact_name = artifact_name
         block.platforms = ParserBlock.platform_from_json(data.get("platforms", []))
 
         for i, stage_config in enumerate(data.get("stages", [])):
-            block.stages.append(StageElement.parse_from_json(stage_config, block, artifact_name, i))
+            block.groups.append(GroupElement.parse_from_json(stage_config, block, artifact_name, i))
 
         return block
 
 
-class StageElement(ParserBlock):
+class GroupElement(ParserBlock):
     @type_guard
     def __init__(self, parent: ArtifactElement):
         super().__init__(parent)
         self.stage_name: str = ""
         self.stage_index: int = -1
         self.dependencies: Dict[str, Union[ArtifactElement, str]] = {}
-        self.template = None
+        self.template: Optional[GroupTemplate] = None
 
     def get_block_type(self) -> str:
         return "stage"
@@ -150,14 +150,14 @@ class StageElement(ParserBlock):
 
     @staticmethod
     @type_guard
-    def parse_from_json(data: dict, parent: ArtifactElement, artifact_name: str, stage_index: int) -> "StageElement":
+    def parse_from_json(data: dict, parent: ArtifactElement, artifact_name: str, stage_index: int) -> "GroupElement":
         error_on_fail(check_dict_types(data, {
             "name": str,
             "config": Optional[dict],
             "dependencies": Optional[List[str]],
         }), f"Missing information or wrong types to parse stage {data.get('name', 'unknown')} for artifact {artifact_name}:{stage_index}:")
 
-        block = StageElement(parent=parent)
+        block = GroupElement(parent=parent)
         block.stage_name = data.get("name")
         block.stage_index = stage_index
         block.dependencies = copy.deepcopy(data.get("dependencies", []))
@@ -242,13 +242,10 @@ class ConfigParser:
         for artifact_name, artifact_block in self._root.artifacts.items():
             collected_dependencies: List[str] = []
 
-            for manual_dependency in artifact_block.dependencies:
-                check_type(manual_dependency, str)
-                collected_dependencies.append(manual_dependency)
-
-            for stage_block in artifact_block.stages:
+            for stage_block in artifact_block.groups:
                 for task_dependency in stage_block.dependencies:
                     check_type(task_dependency, str)
+                    assert isinstance(task_dependency, str)
                     collected_dependencies.append(task_dependency)
 
             linked_dependecies = []
@@ -263,11 +260,12 @@ class ConfigParser:
 
             artifact_block.dependencies = linked_dependecies
 
-            for stage_block in artifact_block.stages:
+            for stage_block in artifact_block.groups:
                 task_dependencies = []
                 for task_dependency in stage_block.dependencies:
                     check_type(task_dependency, str)
                     dependency_block = self.get_artifact(task_dependency)
+                    assert isinstance(dependency_block, ArtifactElement)
                     task_dependencies.append(dependency_block)
                 stage_block.dependencies = task_dependencies
 
@@ -306,7 +304,7 @@ class ConfigParser:
 
     def _match_templates(self):
         for artifact_name, artifact_block in self._root.artifacts.items():
-            for stage_block in artifact_block.stages:
+            for stage_block in artifact_block.groups:
                 # Prefer stage groups before individual stages
                 group = GroupDatabase.get_instance().get_group(stage_block.stage_name)
 
