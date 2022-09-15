@@ -16,17 +16,6 @@ class PayloadType(IntEnum):
     # Compiled executable and shared libraries
     DOTNET_BINARY = auto()
 
-    NATIVE_STATIC_EXE = auto()
-    NATIVE_DYNAMIC_EXE = auto()
-
-    NATIVE_STATIC_DLL = auto()
-    NATIVE_DYNAMIC_DLL = auto()
-
-    NATIVE_SHELLCODE = auto()
-
-    # Source code and other files
-    POWERSHELL_SCRIPT = auto()
-
     CSHARP_PROJECT = auto()
 
     @staticmethod
@@ -59,6 +48,9 @@ class PayloadType(IntEnum):
 
     def is_file(self):
         return not self.is_project() and not self.is_empty()
+
+    def is_binary(self):
+        return "BINARY" in self.name
 
     def __str__(self):
         return self.name

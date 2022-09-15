@@ -20,10 +20,10 @@ class CopyTemplateFolderTask(AbstractForeachFileTask):
             name="tasks.general.utils.copy_template_folder",
             description="Copies the stage template folder to the build directory.",
             platform=TargetPlatform.ALL,
-            required_parameters={
-                "source": Path,
-                "target": Path,
-            }
+            required_parameters=[
+                ("source", Path, "The source folder to copy from."),
+                ("target", Path, "The target folder to copy to."),
+            ]
         )
 
     def _get_origin_folder(self, parameters: dict, stage: StageTemplate) -> Optional[Path]:

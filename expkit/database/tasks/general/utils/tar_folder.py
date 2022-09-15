@@ -28,9 +28,9 @@ class TarFolderTask(AbstractForeachFileTask):
             name="tasks.general.utils.tar_folder",
             description="Creates an in memory tar files from a folder on disk.",
             platform=TargetPlatform.ALL,
-            required_parameters={
-                "folder": Path,
-            }
+            required_parameters=[
+                ("folder", Path, "The folder to tar."),
+            ]
         )
         self._tarfile_raw = None
         self._tarfile = None

@@ -17,9 +17,9 @@ class CSharpAddDefines(AbstractStringReplace):
             name="tasks.templating.csharp.csharp_add_defines",
             description="Add defines to C# source files.",
             platform=TargetPlatform.ALL,
-            required_parameters={
-                "defines": List[str],  # defines to add
-            }
+            required_parameters=[
+                ("defines", List[str], "Defines to add to the source code")
+            ]
         )
 
     def transform_source(self, source: str, parameters: dict) -> str:

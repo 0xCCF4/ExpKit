@@ -66,10 +66,10 @@ class StageInfoCommand(CommandTemplate):
                                 else:
                                     PRINT.info(f"    - {input_type} ({dependencies}) -> {stage.get_output_payload_type(input_type, dependencies)}")
 
-                    if len(stage.required_parameters) > 0:
+                    if len(stage.required_parameters_types) > 0:
                         PRINT.info(f"  Config parameters:")
-                        for k, v in stage.required_parameters.items():
-                            PRINT.info(f"    - {k}: {v}")
+                        for k, v in stage.get_required_parameters_info().items():
+                            PRINT.info(f"    - {k}: {v[0]} {v[1]}")
                     PRINT.info("")
 
         return True

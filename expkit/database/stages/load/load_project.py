@@ -21,10 +21,10 @@ class LoadProject(StageTemplate):
             name="stages.load.load_project",
             description="Loads a project from disk.",
             platform=TargetPlatform.ALL,
-            required_parameters={
-                "LOAD_FOLDER_PATH": str,
-                "LOAD_TARGET_FORMAT": str,
-            }
+            required_parameters=[
+                ("LOAD_FOLDER_PATH", str, "Path to the folder to load."),
+                ("LOAD_TARGET_FORMAT", str, "Target payload format to load the project as."),
+            ]
         )
 
         self.add_task("tasks.general.utils.copy_template_folder")

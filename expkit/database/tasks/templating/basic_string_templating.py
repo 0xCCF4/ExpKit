@@ -17,11 +17,11 @@ class BasicStringTemplating(AbstractStringReplace):
             name="tasks.templating.basic_string_templating",
             description="Replaces strings in source file with replacements. Supports regex.",
             platform=TargetPlatform.ALL,
-            required_parameters={
-                "replacements": Dict[str, str],  # replacement mapping regex
-                "regex": Optional[bool],  # enable regex matching (default: true)
-                "flags": Optional[Union[int, re.RegexFlag]],  # regex flags (default: re.MULTILINE|re.DOTALL)
-            }
+            required_parameters=[
+                ("replacements", Dict[str, str], "Replacements to apply. List of regex and replacement pairs"),
+                ("regex", Optional[bool], "Enables regex matching (default: True)"),
+                ("flags", Optional[Union[int, re.RegexFlag]], "Regex flags (default: re.MULTILINE|re.DOTALL)"),
+            ]
         )
 
     def transform_source(self, source: str, parameters: dict) -> str:

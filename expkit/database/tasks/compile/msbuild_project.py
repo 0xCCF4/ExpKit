@@ -23,18 +23,18 @@ class BuildMSBuildProject(TaskTemplate):
             name="tasks.compile.msbuild_project",
             description="Compiles a msbuild project",
             platform=TargetPlatform.WINDOWS,
-            required_parameters={
-                "msbuild_path": Optional[Path],
-                "project_file": Optional[Path],
-                "build_type": str,
-                "additional_args": Optional[List[str]],
-                "additional_env": Optional[Dict[str, str]],
-                "build_constants": Optional[List[str]],
-            }
+            required_parameters=[
+                ("msbuild_path", Optional[Path], "Path to the msbuild executable (default: auto-detect)"),
+                ("project_file", Optional[Path], "Path to the project file (default: auto-detect)"),
+                ("build_type", str, "Build type (Release, Debug, etc.)"),
+                ("additional_args", Optional[List[str]], "Additional arguments to pass to msbuild (default: none)"),
+                ("additional_env", Optional[Dict[str, str]], "Additional environment variables to pass to msbuild (default: none)"),
+                ("build_constants", Optional[List[str]], "Build constants to pass to msbuild (default: none)"),
+            ]
         )
 
     def execute(self, parameters: dict, build_directory: Path, stage: StageTemplate) -> TaskOutput:
-        error_on_fail(check_dict_types(parameters, self.required_parameters), "Invalid parameters for task:")
+        error_on_fail(check_dict_types(parameters, self.required_parameters_types), "Invalid parameters for task:")
 
         LOGGER.debug("Building C# project for Windows")
 

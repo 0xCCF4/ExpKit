@@ -55,8 +55,8 @@ class GroupInfoCommand(CommandTemplate):
                         for stage in group.stages:
                             PRINT.info(f"    - {stage}")
 
-                            for k, v in stage.required_parameters.items():
-                                PRINT.info(f"      ~ {k}: {v}")
+                            for k, v in stage.get_required_parameters_info().items():
+                                PRINT.info(f"      ~ {k}: {v[0]} {v[1]}")
 
                             deps = stage.get_supported_dependency_types()
                             assert len(deps) >= 1

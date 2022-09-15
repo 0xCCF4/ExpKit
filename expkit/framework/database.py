@@ -36,6 +36,11 @@ class RegisterDecoratorHelper(Generic[T]):
             else:
                 self._registered.append(obj)
 
+    def reset(self):
+        with self._lock:
+            self._registered = []
+            self.finished = False
+
 __helper_tasks: RegisterDecoratorHelper[Tuple[Type[TaskTemplate], tuple, dict]] = RegisterDecoratorHelper()
 __helper_stages: RegisterDecoratorHelper[Tuple[Type[StageTemplate], tuple, dict]] = RegisterDecoratorHelper()
 __helper_groups: RegisterDecoratorHelper[Tuple[Type[GroupTemplate], tuple, dict]] = RegisterDecoratorHelper()
@@ -325,3 +330,16 @@ class CommandDatabase():
         if CommandDatabase.__instance is None:
             CommandDatabase.__instance = CommandTemplate("", CommandArgumentCount(0,0), "<ROOT>")
         return CommandDatabase.__instance
+
+
+def reset_databases():
+    TaskDatabase.__instance = None
+    StageDatabase.__instance = None
+    GroupDatabase.__instance = None
+    CommandDatabase.__instance = None
+
+    __helper_tasks.reset()
+    __helper_stages.reset()
+    __helper_groups.reset()
+    __helper_auto_groups.reset()
+    __helper_commands.reset()

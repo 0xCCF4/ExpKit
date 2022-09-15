@@ -21,10 +21,10 @@ class TextTemplateEngine(StageTemplate):
             name="stages.templating.text_template_engine",
             description="A stage that uses a text template engine to transform strings.",
             platform=TargetPlatform.ALL,
-            required_parameters={
-                "TPL_VARIABLES": Dict[str, str],
-                "TPL_EXTENSIONS": Optional[List[str]],
-            }
+            required_parameters=[
+                ("TPL_VARIABLES", Dict[str, str], "A mapping of regex patterns and corresponding replacements"),
+                ("TPL_EXTENSIONS", Optional[List[str]], "A list of file extensions on which replacements should be transformed on (default: common source code extensions)")
+            ]
         )
 
         self.add_task("tasks.general.utils.untar_folder")
@@ -103,7 +103,7 @@ class TextTemplateEngine(StageTemplate):
             content=context.get("output"))
 
     def get_supported_input_payload_types(self) -> List[PayloadType]:
-        return PayloadType.get_all_types(include_empty=False)
+        return [t for t in PayloadType.get_all_types(include_empty=False) if (t.is_file() and not t.is_binary()) or t.is_project()]
 
     def get_output_payload_type(self, input: PayloadType, dependencies: List[PayloadType]) -> List[PayloadType]:
-        return [input] if input.is_file() or input.is_project() else []
+        return [input] if (input.is_file() and not input.is_binary()) or input.is_project() else []

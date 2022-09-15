@@ -2,7 +2,7 @@ import importlib
 import inspect
 import os
 from pathlib import Path
-from typing import List, Optional, Dict, Type, Union
+from typing import List, Optional, Dict, Type, Union, Tuple
 
 from expkit.base.architecture import TargetPlatform
 from expkit.base.logger import get_logger
@@ -20,11 +20,18 @@ class StageTemplate():
     """Performs a transformation on a payload by executing multiple tasks."""
 
     @type_guard
-    def __init__(self, name: str, description: str, platform: TargetPlatform, required_parameters: Dict[str, any]):
+    def __init__(self, name: str, description: str, platform: TargetPlatform, required_parameters: List[Tuple[str, any, str]]):
         self.name = name
         self.description = description
         self.platform = platform
-        self.required_parameters = required_parameters
+
+        self.required_parameters_types: Dict[str, any] = {}
+        self.required_parameters_description: Dict[str, str] = {}
+
+        for pname, ptype, pdescription in required_parameters:
+            assert pname not in self.required_parameters_types, f"Parameter {pname} already exists"
+            self.required_parameters_types[pname] = ptype
+            self.required_parameters_description[pname] = pdescription
 
         self.tasks: List[TaskTemplate] = []
 
@@ -45,8 +52,11 @@ class StageTemplate():
         if task is None:
             return
 
-        assert self.platform in self._get_task_platform_intersection(), f"Stage {self.name} target platform is not compatible with task {task.name}. Difference {self.platform.difference(self._get_task_platform_intersection())}"
+        assert self.platform in self._get_task_platform_intersection(), f"Stage {self.name} target platform is not compatible with attached tasks."
         self.tasks.append(task)
+        if self.platform not in self._get_task_platform_intersection():
+            self.tasks.remove(task)
+            raise RuntimeError(f"Stage {self.name} target platform is not compatible with new task {task.name}. Difference {self.platform.difference(self._get_task_platform_intersection())}")
 
     def get_supported_input_payload_types(self) -> List[PayloadType]:
         raise NotImplementedError("Not implemented")
@@ -111,9 +121,12 @@ class StageTemplate():
     def execute_task(self, context: StageContext, index: int, task: TaskTemplate):
         raise NotImplementedError("Not implemented")
 
+    def get_required_parameters_info(self) -> Dict[str, Tuple[any, str]]:
+        return {k: (v, self.required_parameters_description[k]) for k, v in self.required_parameters_types.items()}
+
     @type_guard
     def execute(self, payload: Payload, output_type: PayloadType, dependencies: List[Payload], parameters: dict, build_directory: Path) -> Payload:
-        error_on_fail(check_dict_types(parameters, self.required_parameters), "Stage parameters", TypeError)
+        error_on_fail(check_dict_types(parameters, self.required_parameters_types), "Stage parameters", TypeError)
 
         context: StageContext = StageContext(
             initial_payload=payload,

@@ -15,16 +15,16 @@ LOGGER = get_logger(__name__)
 
 
 class AbstractForeachFileTask(TaskTemplate):
-    def __init__(self, name: str, description: str, platform: TargetPlatform, required_parameters: dict):
+    def __init__(self, name: str, description: str, platform: TargetPlatform, required_parameters: list):
         super().__init__(
             name=name,
             description=description,
             platform=platform,
-            required_parameters={
-                "exclude": Optional[List[str]], # list of files to exclude (regex format string)
-                "include": Optional[List[str]],  # list of files to include (regex format string) - if not specified, all files are included
-                **required_parameters
-            }
+            required_parameters=[
+                ("exclude", Optional[List[str]], "List of files to exclude as list of regex match statement (default: exclude none)"),
+                ("include", Optional[List[str]],  "List of files to include as list of regex match statements (default: include all files)"),
+                *required_parameters,
+            ]
         )
 
     def _get_origin_folder(self, parameters: dict, stage: StageTemplate) -> Optional[Path]:
@@ -40,7 +40,7 @@ class AbstractForeachFileTask(TaskTemplate):
         raise NotImplementedError("Abstract method")
 
     def execute(self, parameters: dict, build_directory: Path, stage: StageTemplate) -> TaskOutput:
-        error_on_fail(check_dict_types(parameters, self.required_parameters), "Invalid parameters for task:")
+        error_on_fail(check_dict_types(parameters, self.required_parameters_types), "Invalid parameters for task:")
 
         status = self._prepare_task(parameters, build_directory, stage)
         if not status.success:

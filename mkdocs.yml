@@ -1,16 +1,72 @@
 site_name: Exploit Kit
 site_dir: docs-build
 # site_url: https://exploitkit.github.io # TODO
-theme: material
+# repo_url: "https://gitlab.com/abc/def.git" # TODO
+# repo_name: "Exploit Kit" # TODO
+edit_uri: edit/master/docs/
+
+theme:
+  name: material
+  language: en
+  icon:
+    logo: material/desktop-classic
+    repo: fontawesome/brands/git-alt
+  # favicon: images/favicon.png # TODO
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.sections
+    - toc.integrate
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - search.share
+  palette:
+    # Palette toggle for light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme:
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+
+    # Palette toggle for dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
 
 plugins:
-    - search
-    - macros:
-        module_name: expkit/docs/macros
+  - search
+  - macros:
+      module_name: expkit/docs/macros
 
 markdown_extensions:
   - toc:
       permalink: "&para;"
+      toc_depth: 2
+      separator: "-"
+  - abbr
+  - attr_list
+  - def_list
+  - footnotes
+  - tables
+  - pymdownx.emoji:
+      emoji_index: !!python/name:materialx.emoji.twemoji
+      emoji_generator: !!python/name:materialx.emoji.to_svg
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.escapeall
+  - pymdownx.betterem
+  - pymdownx.highlight:
+      anchor_linenums: true
+      auto_title: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.tasklist:
+      custom_checkbox: true
 
 nav:
   - Home: index.md
@@ -18,13 +74,19 @@ nav:
   - User Guide:
     - Overview: user-guide/overview.md
     - Installation: user-guide/installation.md
-    - Writing your first payload: user-guide/writing-your-first-payload.md
+    - Creating your first payload: user-guide/creating-first-payload.md
   - Developer Guide:
-      - Overview: developer-guide/overview.md
-      - Contributing: about/contributing.md
+    - Overview: developer-guide/overview.md
+    - Contributing: about/contributing.md
+  - API Reference:
+    - Groups: api/groups.md
+    - Stages: api/stages.md
+    - Tasks: api/tasks.md
+    - Payload Types: api/payloads.md
   - About:
-      - Contributing: about/contributors.md
-      - License: about/license.md
+    - Contributing: about/contributing.md
+    - License: about/license.md
 
 watch:
   - docs/
+  - expkit/

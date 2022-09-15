@@ -16,22 +16,22 @@ LOGGER = get_logger(__name__)
 
 
 class AbstractStringReplace(TaskTemplate):
-    def __init__(self, name: str, description: str, platform: TargetPlatform, required_parameters: dict):
+    def __init__(self, name: str, description: str, platform: TargetPlatform, required_parameters: list):
         super().__init__(
             name=name,
             description=description,
             platform=platform,
-            required_parameters={
-                "files": List[Tuple[Path, Path]],  # target, origin - mapping from input to output files
-                **required_parameters
-            }
+            required_parameters=[
+                ("files", List[Tuple[Path, Path]], "List of input and according output files."),
+                *required_parameters,
+            ]
         )
 
     def transform_source(self, source: str, parameters: dict) -> str:
         return source
 
     def execute(self, parameters: dict, build_directory: Path, stage: StageTemplate) -> TaskOutput:
-        error_on_fail(check_dict_types(parameters, self.required_parameters), "Invalid parameters for task:")
+        error_on_fail(check_dict_types(parameters, self.required_parameters_types), "Invalid parameters for task:")
 
         for target_path, origin_path in parameters["files"]:
 

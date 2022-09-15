@@ -47,16 +47,16 @@ class CSharpStringTransformTemplateTask(AbstractStringReplace):
             name="tasks.obfuscation.csharp.string_transform_template",
             description="Transforms all strings within CSharp source code to prevent signature detection of used strings.",
             platform=TargetPlatform.ALL,
-            required_parameters={
-                "OBF_STRING_ENCODING": Optional[str]
-            } 
+            required_parameters=[
+                ("encoding", Optional[str], f"The encoding format used to transform strings ({', '.join(TRANSFORMATIONS.keys())}) (default: base64)")
+            ]
         )
 
         self.__status: int = 0
         self.__transform_func = None
 
     def transform_source(self, source: str, parameters: dict) -> str:
-        method = parameters.get("OBF_STRING_ENCODING", "base64")
+        method = parameters.get("encoding", "base64")
 
         transform = TRANSFORMATIONS.get(method, None)
         if transform is None:

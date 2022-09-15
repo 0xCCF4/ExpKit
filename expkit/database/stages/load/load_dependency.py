@@ -16,7 +16,7 @@ class LoadDependency(StageTemplate):
             name="stages.load.load_dependency",
             description="Loads another artifact as dependency.",
             platform=TargetPlatform.ALL,
-            required_parameters={}
+            required_parameters=[]
         )
 
     def prepare_build(self, context: StageContext):

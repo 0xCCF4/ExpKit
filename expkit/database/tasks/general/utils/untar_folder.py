@@ -23,14 +23,14 @@ class UntarFolderTask(TaskTemplate):
             name="tasks.general.utils.untar_folder",
             description="Extracts an in memory tar folder to the disk.",
             platform=TargetPlatform.ALL,
-            required_parameters={
-                "folder": Path,
-                "tarfile": bytes,
-            }
+            required_parameters=[
+                ("folder", Path, "The folder to extract the tar file to."),
+                ("tarfile", bytes, "The in-memory-tar file to extract."),
+            ]
         )
 
     def execute(self, parameters: dict, build_directory: Path, stage: StageTemplate) -> TaskOutput:
-        error_on_fail(check_dict_types(parameters, self.required_parameters), "Invalid parameters for task:")
+        error_on_fail(check_dict_types(parameters, self.required_parameters_types), "Invalid parameters for task:")
 
         LOGGER.debug(f"Untaring folder {parameters['folder']}")
 

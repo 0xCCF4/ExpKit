@@ -7,6 +7,7 @@ from expkit.base.stage.context import StageContext
 from expkit.base.task.base import TaskTemplate
 from expkit.base.utils.files import recursive_foreach_file
 from expkit.database.tasks.general.utils.tar_folder import TarTaskOutput
+from expkit.database.tasks.obfuscation.csharp.string_transform_template import TRANSFORMATIONS
 from expkit.framework.database import register_stage, TaskDatabase, auto_stage_group
 
 
@@ -18,9 +19,9 @@ class CSharpObfuscationStage(StageTemplate):
             name="stages.obfuscation.csharp.csharp_obfuscation",
             description="Obfuscates CSharp source code to prevent signature detection.",
             platform=TargetPlatform.ALL,
-            required_parameters={
-                "OBF_STRING_ENCODING": Optional[str]
-            }
+            required_parameters=[
+                ("OBF_STRING_ENCODING", Optional[str], f"Encoding to use for string obfuscation ({', '.join(TRANSFORMATIONS.keys())}) (default: base64)")
+            ]
         )
 
         self.add_task("tasks.general.utils.untar_folder")
@@ -42,7 +43,7 @@ class CSharpObfuscationStage(StageTemplate):
                 raise Exception("Failed to untar folder.")
 
         elif task.name == "task.obfuscation.csharp.string_transform_template":
-            task_parameters["OBF_STRING_ENCODING"] = context.parameters.get("OBF_STRING_ENCODING", None)
+            task_parameters["encoding"] = context.parameters.get("OBF_STRING_ENCODING", None)
 
             files = []
             recursive_foreach_file(context.build_directory, lambda f: files.append(f))

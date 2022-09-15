@@ -50,10 +50,10 @@ class TaskInfoCommand(CommandTemplate):
                         for platform, architecture in platform:
                             PRINT.info(f"    - {platform} ({architecture})")
 
-                    if len(task.required_parameters) > 0:
+                    if len(task.required_parameters_types) > 0:
                         PRINT.info(f"  Config parameters:")
-                        for k, v in task.required_parameters.items():
-                            PRINT.info(f"    - {k}: {v}")
+                        for k, v in task.get_required_parameters_info().items():
+                            PRINT.info(f"    - {k}: {v[0]} {v[1]}")
 
                     PRINT.info("")
 

@@ -109,6 +109,8 @@ class Platform(IntFlag):
             return [Architecture.i386, Architecture.AMD64, Architecture.ARM, Architecture.ARM64]
         elif self == Platform.MACOS:
             return [Architecture.AMD64]
+        elif self == Platform.DUMMY:
+            return [Architecture.DUMMY]
         else:
             return []
 

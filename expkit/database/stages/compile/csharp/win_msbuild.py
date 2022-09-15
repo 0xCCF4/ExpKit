@@ -24,14 +24,14 @@ class CompileCSharpWindows(StageTemplate):
             name="stages.compile.csharp.win_msbuild",
             description="Compiles C# source code to a binary.",
             platform=TargetPlatform.WINDOWS,
-            required_parameters={
-                "BUILD_TYPE": Optional[str],  # Release or Debug
-                "BUILD_ARGS": Optional[List[str]],
-                "BUILD_ENV": Optional[Dict[str, str]],
-                "BUILD_CONSTANTS": Optional[List[str]],
-                "BUILD_PROJECT_FILENAME": Optional[str],
-                "BUILD_MSBUILD_EXE": Optional[str],
-            }
+            required_parameters=[
+                ("BUILD_TYPE", Optional[str], "The build type (Release, Debug, etc.) (default: Release)"),
+                ("BUILD_ARGS", Optional[List[str]], "Additional arguments to pass to msbuild (default: none)"),
+                ("BUILD_ENV", Optional[Dict[str, str]], "Additional environment variables to pass to msbuild (default: none)"),
+                ("BUILD_CONSTANTS", Optional[List[str]], "Additional constants to pass to msbuild (default: none)"),
+                ("BUILD_PROJECT_FILENAME", Optional[str], "The name of the project file to build (default: auto-detect)"),
+                ("BUILD_MSBUILD_EXE", Optional[str], "The path to the msbuild executable (default: auto-detect)"),
+            ]
         )
 
         self.add_task("tasks.general.utils.untar_folder")

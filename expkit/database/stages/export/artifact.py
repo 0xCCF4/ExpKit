@@ -25,10 +25,10 @@ class LoadProject(StageTemplate):
             name="stages.export.artifact",
             description="Exports an artifact to the file system.",
             platform=TargetPlatform.ALL,
-            required_parameters={
-                "EXPORT_FOLDER_PATH": Optional[str], # The path to the folder where the artifact should be exported to (default cwd)
-                "EXPORT_NAME": str,  # The name of the subfolder or file where the artifact should be exported to
-            }
+            required_parameters=[
+                ("EXPORT_FOLDER_PATH", Optional[str], "The path to the parent folder where the artifact should be exported to (default cwd)"),
+                ("EXPORT_NAME", str, "The name of the sub folder or file where the artifact should be exported to"),
+            ]
         )
 
         self.add_task("tasks.general.utils.untar_folder")
