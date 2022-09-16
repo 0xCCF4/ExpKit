@@ -1,8 +1,8 @@
 site_name: Exploit Kit
 site_dir: docs-build
-# site_url: https://exploitkit.github.io # TODO
-# repo_url: "https://gitlab.com/abc/def.git" # TODO
-# repo_name: "Exploit Kit" # TODO
+site_url: "https://0xCCF4.gitlab.io/expkit/"
+repo_url: "https://gitlab.com/0xCCF4/expkit"
+repo_name: "Exploit Kit"
 edit_uri: edit/master/docs/
 
 theme:
