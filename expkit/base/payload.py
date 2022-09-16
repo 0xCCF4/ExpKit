@@ -10,13 +10,17 @@ from expkit.base.utils.type_checking import type_guard
 
 
 class PayloadType(IntEnum):
+    # Special types
     UNKNOWN = auto()
     EMPTY = auto()
 
-    # Compiled executable and shared libraries
-    DOTNET_BINARY = auto()
-
+    # Project types
     CSHARP_PROJECT = auto()
+
+    # Scripts
+
+    # Compiled binaries
+    DOTNET_BINARY = auto()
 
     @staticmethod
     @type_guard
@@ -51,6 +55,16 @@ class PayloadType(IntEnum):
 
     def is_binary(self):
         return "BINARY" in self.name
+
+    def get_description(self) -> str:
+        if self == PayloadType.EMPTY:
+            return "Empty payload"
+        elif self == PayloadType.DOTNET_BINARY:
+            return "Compiled .NET binary"
+        elif self == PayloadType.CSHARP_PROJECT:
+            return "C# project folder"
+        else:
+            return "Unknown payload type"
 
     def __str__(self):
         return self.name

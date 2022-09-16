@@ -34,3 +34,8 @@ def escape_markdown(string: any) -> str:
     for c in string:
         result += f"\\{c}"
     return result
+
+
+@mkdocs_macro
+def markdown_anchor(string: any) -> str:
+    return string.lower().replace(".", "")

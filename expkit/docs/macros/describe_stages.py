@@ -2,8 +2,8 @@ import textwrap
 
 from expkit.base.architecture import TargetPlatform
 from expkit.docs.macros.platform import platform_icon, describe_target_platform
-from expkit.framework.database import TaskDatabase, StageDatabase
-from expkit.docs.utils import mkdocs_macro, escape_markdown
+from expkit.framework.database import TaskDatabase, StageDatabase, GroupDatabase
+from expkit.docs.utils import mkdocs_macro, escape_markdown, markdown_anchor
 
 
 @mkdocs_macro
@@ -31,8 +31,6 @@ def describe_stage(stage_name: str) -> str:
     stage = db.get_stage(stage_name)
 
     platform = stage.platform
-    pretty_string = platform.get_pretty_string()
-    pretty_string_default = pretty_string if pretty_string is not None else "Custom"
 
     icons = ""
     if not platform.intersection(TargetPlatform.WINDOWS).is_empty():
@@ -43,12 +41,12 @@ def describe_stage(stage_name: str) -> str:
         icons += platform_icon("macos")
 
     result += f"## {escape_markdown(stage.name)} {icons}\n\n"
+    result += "---------------\n"
     result += f"### Description\n {escape_markdown(stage.description)}\n\n"
 
-    result += f"### Platform\n {escape_markdown(pretty_string_default)}\n\n"
+    result += f"### Platform\n\n"
 
-    start_extended = "+" if pretty_string is None else ""
-    result += f"???{start_extended} \"Detailed platform overview\"\n\n{textwrap.indent(describe_target_platform(platform), '    ')}\n\n"
+    result += f"{describe_target_platform(platform)}\n\n"
 
     result += f"### Parameters\n"
     if len(stage.required_parameters_types) > 0:
@@ -83,7 +81,18 @@ def describe_stage(stage_name: str) -> str:
         result += "Num | Name | Description\n"
         result += " :---: | :--- | :---\n"
         for i, task in enumerate(stage.tasks):
-            result += f" {i+1} | [{escape_markdown(task.name)}](tasks.md#{escape_markdown(task.name.replace('.',''))}) | {escape_markdown(task.description)} \n"
+            result += f" {i+1} | [{escape_markdown(task.name)}](tasks.md#{escape_markdown(markdown_anchor(task.name))}) | {escape_markdown(task.description)} \n"
+
+    result += "\n\n### Used by groups\n"
+
+    used_by_groups = [g for g in GroupDatabase.get_instance().groups.values() if stage in g.stages]
+    if len(used_by_groups) <= 0:
+        result += "None\n"
+    else:
+        result += "Num | Name | Description\n"
+        result += " :---: | :--- | :---\n"
+        for i, group in enumerate(used_by_groups):
+            result += f" {i+1} | [{escape_markdown(group.name)}](groups.md#{escape_markdown(markdown_anchor(group.name))}) | {escape_markdown(group.description)} \n"
 
     return result
 

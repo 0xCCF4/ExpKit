@@ -1,0 +1,3 @@
+# Groups
+
+{{ describe_groups() }}
