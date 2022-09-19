@@ -19,7 +19,7 @@ PRINT = None
 def main():
     global LOGGER, PRINT
 
-    parser = argparse.ArgumentParser(description="TWINSEC exploit building framework", formatter_class=argparse.RawTextHelpFormatter)
+    parser = argparse.ArgumentParser(description="Exploit/Payload building framework", formatter_class=argparse.RawTextHelpFormatter)
 
     parser.add_argument("-v", "--verbose", action="store_true", help="verbose output", default=False)
     parser.add_argument("-d", "--debug", action="store_true", help="debug output", default=False)

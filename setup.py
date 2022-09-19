@@ -21,7 +21,7 @@ while index < len(install_requires):
 
 setup(name='expkit',
       version='1.0',
-      description='TWINSEC Exploit Framework',
+      description='Exploit-Payload Framework',
       author='Johannes Lenzen',
       author_email='johannes.lenzen@twinsec.de',
       packages=['expkit'],
