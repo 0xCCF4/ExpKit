@@ -9,3 +9,4 @@ site/
 docs-build/
 test/
 public/
+dist/
