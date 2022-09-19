@@ -28,7 +28,7 @@ class ServerCommand(CommandTemplate):
             Starts a webserver to build the exploit configuration defined in
             the config.json file on the fly whenever a request is received.
             The request must be a GET request with the following parameters:
-            1. platform: The target platform (WINDOWS, LINUX, MACOS, ...).
+            1. os: The target platform (WINDOWS, LINUX, MACOS, ...).
             2. arch: The target architecture (i386, AMD64, ARM, ARM64, ...).
             3. target: The target artifact to build from the config.json file.
             4. token: The token to authenticate the request.
@@ -113,7 +113,7 @@ class ServerCommand(CommandTemplate):
             LOGGER.info(f"   IP: {handler.client_address[0]}")
             LOGGER.info(f"   Port: {handler.client_address[1]}")
 
-        platform = query.get("platform", ["DUMMY"])[0]
+        platform = query.get("os", ["DUMMY"])[0]
         arch = query.get("arch", ["DUMMY"])[0]
         target = query.get("target", [None])[0]
         token = query.get("token", [None])[0]

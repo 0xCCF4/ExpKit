@@ -14,8 +14,17 @@ LOGGER = get_logger(__name__)
 class ServerCommand(CommandTemplate):
     def __init__(self):
         super().__init__(".build", CommandArgumentCount(0, 2), textwrap.dedent('''\
-            Builds an exploit according to the config.json file.
+            Builds an exploit according to the config.json file,
+            the specified platform, and architecture.
+            '''), textwrap.dedent('''\
+            Builds an exploit according to the config.json file,
+            the specified platform, and architecture. If no platform
+            or architecture is specified, the default non-platform-arch-specific
+            specific DUMMY platform or DUMMY architecture is used.
             '''))
+
+    def get_pretty_description_header(self) -> str:
+        return f"{super().get_pretty_description_header()} [platform] [architecture]"
 
     def _execute_command(self, options: CommandOptions, *args) -> bool:
         if options.config is None:

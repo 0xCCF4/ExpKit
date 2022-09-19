@@ -79,6 +79,7 @@ nav:
     - Overview: developer-guide/overview.md
     - Contributing: about/contributing.md
   - API Reference:
+    - Configuration: api/configuration.md
     - Groups: api/groups.md
     - Stages: api/stages.md
     - Tasks: api/tasks.md

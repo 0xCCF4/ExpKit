@@ -26,4 +26,9 @@ setup(name='expkit',
       author_email='johannes.lenzen@twinsec.de',
       packages=['expkit'],
       install_requires=install_requires,
+      entry_points={
+            'console_scripts': [
+                  'expkit = expkit.framework.main:main',
+            ],
+        },
      )
