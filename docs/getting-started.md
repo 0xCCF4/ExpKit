@@ -11,11 +11,19 @@ building blocks like encryption or obfuscation stages.
 ExpKit can be installed locally using `pip` and `python3.10`,
 ideally by using a virtual environment:
 
-```bash
-pip install -e .
-```
+=== "PyPI"
 
-This will install ExpKit and all its dependencies.
+    ```bash
+    pip install expkit-framework
+    ```
+
+=== "Local"
+
+    ```bash
+    pip install -e .
+    ```
+
+This will install ExpKit and all its runtime dependencies.
 
 ## Creating a new project
 

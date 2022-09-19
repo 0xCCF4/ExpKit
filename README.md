@@ -6,18 +6,24 @@ to process exploits/payloads to evade antivirus and
 endpoint detection response products using reusable
 building blocks like encryption or obfuscation stages.
 
-For full documentation visit the [documentation](https://0xccf4.gitlab.io/expkit/).
+For the full documentation visit the [docs](https://0xccf4.gitlab.io/expkit/).
 
 ## Installation
 
 ExpKit can be installed locally using `pip` and `python3.10`,
 ideally by using a virtual environment:
 
-```bash
+```
 pip install -e .
 ```
 
-This will install ExpKit and all its dependencies.
+or by using PyPI:
+
+```
+pip install expkit-framework
+```
+
+This will install ExpKit and all its runtime dependencies.
 
 ## Creating a new project
 

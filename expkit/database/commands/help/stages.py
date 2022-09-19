@@ -75,5 +75,5 @@ class StageInfoCommand(CommandTemplate):
         return True
 
     def get_pretty_description_header(self) -> str:
-        return f"{super().get_pretty_description_header()} [name]"
+        return f"{super().get_pretty_description_header()} [all/name]"
 
