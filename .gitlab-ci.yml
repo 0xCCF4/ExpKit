@@ -1,10 +1,10 @@
 image: python:3.10-buster
 
 before_script:
-  - pip --upgrade pip
+  - pip install --upgrade pip
   - pip install -e .[dev]
 
-test:
+pages-test:
   stage: test
   script:
   - mkdocs build --strict --verbose --site-dir test
