@@ -4,6 +4,25 @@ before_script:
   - pip install --upgrade pip
   - pip install -e .[dev]
 
+stages:
+  - test
+  - deploy
+
+pytest:
+  stage: test
+  script:
+    - pytest -v --junitxml=test_log.xml --cov=expkit --cov-report xml
+  artifacts:
+    when: always
+    paths:
+      - test_log.xml
+      - coverage.xml
+    reports:
+      junit: test_log.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+
 pages-test:
   stage: test
   script:
