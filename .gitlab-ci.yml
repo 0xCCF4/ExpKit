@@ -16,6 +16,7 @@ pytest:
     when: always
     paths:
       - test_log.xml
+      - coverage.xml
     reports:
       junit: test_log.xml
       coverage_report:
