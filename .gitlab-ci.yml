@@ -20,7 +20,7 @@ pytest:
       junit: test_log.xml
       coverage_report:
         coverage_format: cobertura
-        file: coverage.xml
+        path: coverage.xml
 
 pages-test:
   stage: test
