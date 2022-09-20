@@ -30,11 +30,8 @@ pypi:
     - pip install --upgrade twine build
     - python -m build
     - twine check dist/*
-    - cat $PYPIRC | base64 -d > .pypirc
-    - twine upload --config .pypirc dist/*
+    - twine upload dist/*
     - echo Deployed to PyPI
-    after_script:
-      - rm .pypirc
     artifacts:
       paths:
       - dist
