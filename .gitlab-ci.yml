@@ -31,7 +31,7 @@ pypi:
     - python -m build
     - twine check dist/*
     - cat $PYPIRC > .pypirc
-    - true || twine upload dist/*
+    - twine upload dist/*
     - echo Deployed to PyPI
     after_script:
       - rm .pypirc
