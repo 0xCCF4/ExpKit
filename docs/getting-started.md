@@ -23,6 +23,12 @@ ideally by using a virtual environment:
     pip install -e .
     ```
 
+=== "Local development"
+
+    ```bash
+    pip install -e .[dev]
+    ```
+
 This will install ExpKit and all its runtime dependencies.
 
 ## Creating a new project
