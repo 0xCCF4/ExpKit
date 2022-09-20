@@ -11,3 +11,7 @@ test/
 public/
 dist/
 .pypirc
+test_log.xml
+htmlcov/
+coverage.xml
+.coverage
