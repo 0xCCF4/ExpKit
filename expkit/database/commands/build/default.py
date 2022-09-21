@@ -2,9 +2,8 @@ import textwrap
 
 from expkit.base.command.base import CommandTemplate, CommandOptions, CommandArgumentCount
 from expkit.base.logger import get_logger
+from expkit.framework.build_organizer import BuildOrganizer
 from expkit.framework.database import register_command
-from ipaddress import ip_address
-
 from expkit.framework.parser import ConfigParser
 
 LOGGER = get_logger(__name__)
@@ -33,6 +32,7 @@ class ServerCommand(CommandTemplate):
         parser = ConfigParser()
         root = parser.parse(options.config)
 
-
+        build_organizer = BuildOrganizer(root)
+        build_organizer.initialize()
 
         return True
