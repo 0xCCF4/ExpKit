@@ -10,10 +10,21 @@ from expkit.framework.parser import GroupElement, ArtifactElement
 
 class JobState(IntEnum):
     PENDING = auto()
+
     RUNNING = auto()
+
     FAILED = auto()
     SKIPPED = auto()
     SUCCESS = auto()
+
+    def is_finished(self) -> bool:
+        return self in (JobState.FAILED, JobState.SKIPPED, JobState.SUCCESS)
+
+    def is_running(self) -> bool:
+        return self == JobState.RUNNING
+
+    def is_pending(self) -> bool:
+        return self == JobState.PENDING
 
 
 class BuildJob:

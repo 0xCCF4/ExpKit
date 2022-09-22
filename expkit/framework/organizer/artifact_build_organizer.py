@@ -61,6 +61,17 @@ class ArtifactBuildOrganizer:
 
                 self.finish_nodes.extend(last_jobs_set)
 
+            # Resolve children
+            queue = self.finish_nodes.copy()
+            while len(queue) > 0:
+                job = queue.pop(0)
+                parent = job.parent
+
+                if parent is not None:
+                    if job not in parent.children:
+                        parent.children.append(job)
+                        queue.append(parent)
+
     @type_guard
     def notify_job_complete(self, job: BuildJob):
         with self.__lock:
@@ -70,8 +81,37 @@ class ArtifactBuildOrganizer:
 
             pass
 
+    def has_more(self) -> bool:
+        with self.__lock:
+            assert self.__initialized, "BuildOrganizer must be initialized before use."
+
+            for fjob in self.finish_nodes:
+                if fjob.state.is_pending():
+                    return True
+
+        return False
+
+    def all_completed(self) -> bool:
+        with self.__lock:
+            assert self.__initialized, "BuildOrganizer must be initialized before use."
+
+            for fjob in self.finish_nodes:
+                if not fjob.state.is_finished():
+                    return False
+
+            return True
+
+
     def get_outputs(self, platform: Platform, architecture: Architecture) -> List[Payload]:
         with self.__lock:
             assert self.__initialized, "BuildOrganizer must be initialized before use."
 
-            return []
+            outputs = []
+
+            for fjob in self.finish_nodes:
+                if fjob.target_platform == platform and fjob.target_architecture == architecture:
+                    if fjob.state == JobState.SUCCESS:
+                        if fjob.job_result is not None:
+                            outputs.append(fjob.job_result)
+
+            return outputs
