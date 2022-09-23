@@ -20,6 +20,8 @@ class ArtifactBuildOrganizer:
         self.empty_root_nodes: Dict[Tuple[Platform, Architecture], BuildJob] = {}
         self.finish_nodes: List[BuildJob] = []
 
+        self.queued_jobs: List[BuildJob] = []
+
     def initialize(self):
         with self.__lock:
             assert not self.__initialized, "BuildOrganizer can only be initialized once."
@@ -72,6 +74,8 @@ class ArtifactBuildOrganizer:
                         parent.children.append(job)
                         queue.append(parent)
 
+            self.queued_jobs = self.empty_root_nodes.copy()
+
     @type_guard
     def notify_job_complete(self, job: BuildJob):
         with self.__lock:
@@ -81,15 +85,49 @@ class ArtifactBuildOrganizer:
 
             pass
 
-    def has_more(self) -> bool:
+    def has_more(self, platform: Optional[Platform] = None, architecture: Optional[Architecture] = None) -> bool:
+        assert platform.is_single()
+        assert architecture.is_single()
         with self.__lock:
             assert self.__initialized, "BuildOrganizer must be initialized before use."
 
             for fjob in self.finish_nodes:
+                if platform is not None and fjob.target_platform != platform:
+                    continue
+                if architecture is not None and fjob.target_architecture != architecture:
+                    continue
                 if fjob.state.is_pending():
                     return True
 
         return False
+
+    def get_next(self, platform: Optional[Platform] = None, architecture: Optional[Architecture] = None) -> Optional[BuildJob]:
+        assert platform.is_single()
+        assert architecture.is_single()
+        with self.__lock:
+            assert self.__initialized, "BuildOrganizer must be initialized before use."
+
+            index = 0
+            while index < len(self.queued_jobs):
+                job = self.queued_jobs[index]
+
+                if not job.state.is_pending():
+                    self.queued_jobs.pop(index)
+                    self.queued_jobs.extend(job.children)
+                    continue
+
+                if platform is not None and job.target_platform != platform:
+                    index += 1
+                    continue
+                if architecture is not None and job.target_architecture != architecture:
+                    index += 1
+                    continue
+
+                assert job.state.is_pending()
+                return job
+
+            assert len(self.queued_jobs) <= 0
+            return None
 
     def all_completed(self) -> bool:
         with self.__lock:
@@ -100,7 +138,6 @@ class ArtifactBuildOrganizer:
                     return False
 
             return True
-
 
     def get_outputs(self, platform: Platform, architecture: Architecture) -> List[Payload]:
         with self.__lock:

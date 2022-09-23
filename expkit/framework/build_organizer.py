@@ -40,11 +40,17 @@ class BuildOrganizer:
             self.platform = platform
             self.architecture = architecture
             self.build_organizer = build_organizer
+            self.artifact_organizer = build_organizer.artifact_build_pipeline[artifact.artifact_name]
+            assert self.artifact_organizer is not None
+
+            self.__lock = threading.RLock()
 
         def has_next(self) -> bool:
-            return False
+            with self.__lock:
+                return self.artifact_organizer.has_more(self.platform, self.architecture)
 
         def get_next(self) -> Optional[BuildJob]:
+
             return None
 
 
