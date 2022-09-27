@@ -8,8 +8,8 @@ from expkit.base.architecture import Platform, Architecture, TargetPlatform
 from expkit.base.group.base import GroupTemplate
 from expkit.base.payload import Payload, PayloadType
 from expkit.base.utils.type_checking import type_guard
-from expkit.framework.organizer.artifact_build_organizer import ArtifactBuildOrganizer
-from expkit.framework.organizer.build_job import BuildJob
+from expkit.framework.building.artifact_build_organizer import ArtifactBuildOrganizer
+from expkit.framework.building.build_job import BuildJob
 from expkit.framework.parser import RootElement, GroupElement, ArtifactElement
 
 
