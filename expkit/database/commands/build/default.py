@@ -74,11 +74,11 @@ class ServerCommand(CommandTemplate):
         executor = LocalBuildExecutor()
         executor.initialize()
 
-        for proxy in build_proxies:
-            while proxy.has_next():
-                job = proxy.get_next()
-                if job is not None:
-                    executor.execute_job(job)
+        #for proxy in build_proxies:
+        #    while proxy.has_next():
+        #        job = proxy.get_next()
+        #        if job is not None:
+        #            executor.execute_job(job)
 
         executor.shutdown()
 

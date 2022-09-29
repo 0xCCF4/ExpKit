@@ -22,6 +22,10 @@ class ArtifactBuildOrganizer:
 
         self.queued_jobs: List[BuildJob] = []
 
+    @property
+    def lock(self) -> threading.RLock:
+        return self.__lock
+
     def initialize(self):
         with self.__lock:
             assert not self.__initialized, "BuildOrganizer can only be initialized once."
@@ -83,9 +87,23 @@ class ArtifactBuildOrganizer:
             if job in self.empty_root_nodes.values():
                 return
 
-            pass
+            assert job.state.is_finished()
 
-    def has_more(self, platform: Optional[Platform] = None, architecture: Optional[Architecture] = None) -> bool:
+            if not job.state.is_success():
+                children = job.children.copy()
+                while len(children) > 0:
+                    child = children.pop(0)
+                    with child.lock:
+                        assert child.state.is_pending()
+                        children.extend(child.children)
+
+                        callback = child.callback
+                        child.callback = None  # prevent recursion
+                        child.mark_running()
+                        child.mark_skipped()
+                        child.callback = callback
+
+    def has_more(self, platform: Optional[Platform] = None, architecture: Optional[Architecture] = None, include_running: bool = False) -> bool:
         assert platform.is_single()
         assert architecture.is_single()
         with self.__lock:
@@ -97,6 +115,8 @@ class ArtifactBuildOrganizer:
                 if architecture is not None and fjob.target_architecture != architecture:
                     continue
                 if fjob.state.is_pending():
+                    return True
+                if fjob.state.is_running() and include_running:
                     return True
 
         return False

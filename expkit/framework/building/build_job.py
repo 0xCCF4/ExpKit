@@ -28,6 +28,10 @@ class JobState(IntEnum):
     def is_pending(self) -> bool:
         return self == JobState.PENDING
 
+    def is_success(self):
+        assert self.is_finished()
+        return self == JobState.SUCCESS
+
 
 class BuildJob:
     def __init__(self,
@@ -47,9 +51,9 @@ class BuildJob:
         self.target_architecture = target_architecture
 
         self.parent: Optional[BuildJob] = None
-        self.required_deps: List[Tuple[PayloadType, ArtifactElement, Platform, Architecture]] = []
-        self.actual_deps: List[BuildJob] = []
         self.children: List[BuildJob] = []
+        self.required_deps: List[Tuple[PayloadType, ArtifactElement, Platform, Architecture]] = []
+        self.dependencies: List[BuildJob] = []
 
         self.start_time: Optional[datetime] = None
         self.stop_time: Optional[datetime] = None
@@ -65,7 +69,7 @@ class BuildJob:
     @property
     def state(self) -> JobState:
         with self.lock:
-            return self.state
+            return self.__state
 
     @state.setter
     def state(self, value: JobState):
@@ -103,7 +107,8 @@ class BuildJob:
             self.job_result = job_output
             self.state = JobState.SUCCESS
             self.stop_time = datetime.now()
-            self.callback(self)
+            if self.callback:
+                self.callback(self)
 
     def mark_error(self):
         with self.lock:
@@ -111,7 +116,8 @@ class BuildJob:
 
             self.state = JobState.FAILED
             self.stop_time = datetime.now()
-            self.callback(self)
+            if self.callback:
+                self.callback(self)
 
     def mark_skipped(self):
         with self.lock:
@@ -119,10 +125,11 @@ class BuildJob:
 
             self.state = JobState.SKIPPED
             self.stop_time = datetime.now()
-            self.callback(self)
+            if self.callback:
+                self.callback(self)
 
     def __str__(self):
-        return f"BuildJob({self.target_platform.name}, {self.target_architecture.name}, {self.target_type}, {self.state.name}, {None if self.definition is None else self.definition.group_name})"
+        return f"BuildJob({self.target_platform.name}, {self.target_architecture.name}, {self.target_type}, {self.state.name}, {None if self.definition is None else self.definition.group_name}, {', '.join([d[0].name for d in self.required_deps]) if len(self.required_deps) > 0 else '-'})"
 
     def __repr__(self):
         return str(self)
