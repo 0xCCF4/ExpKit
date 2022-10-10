@@ -129,7 +129,11 @@ class BuildJob:
                 self.callback(self)
 
     def __str__(self):
-        return f"BuildJob({self.target_platform.name}, {self.target_architecture.name}, {self.target_type}, {self.state.name}, {None if self.definition is None else self.definition.group_name}, {', '.join([d[0].name for d in self.required_deps]) if len(self.required_deps) > 0 else '-'})"
+        return f"BuildJob({'-' if self.definition is None else self.definition.parent.get_name()}:" \
+               f"{self.target_type.name}:{'-' if self.definition is None else self.definition.group_index}," \
+               f"{self.target_platform.name}, {self.target_architecture.name}), " \
+               f"[{', '.join([d[0].name for d in self.required_deps]) if len(self.required_deps) > 0 else '-'}] -> " \
+               f"{self.target_type}, state={self.state.name})"
 
     def __repr__(self):
         return str(self)

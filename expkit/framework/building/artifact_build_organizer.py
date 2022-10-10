@@ -76,7 +76,8 @@ class ArtifactBuildOrganizer:
                 if parent is not None:
                     if job not in parent.children:
                         parent.children.append(job)
-                        queue.append(parent)
+                        if parent not in queue:
+                            queue.append(parent)
 
             self.queued_jobs = self.empty_root_nodes.copy()
 
