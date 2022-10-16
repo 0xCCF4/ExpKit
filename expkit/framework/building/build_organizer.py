@@ -1,18 +1,19 @@
 import threading
-from enum import auto, IntEnum
 from typing import Optional, Dict, List, Tuple
 
-import matplotlib
 import networkx as nx
 
 from expkit.base.architecture import Platform, Architecture, TargetPlatform
 from expkit.base.group.base import GroupTemplate
+from expkit.base.logger import get_logger
 from expkit.base.payload import Payload, PayloadType
 from expkit.base.utils.type_checking import type_guard
 from expkit.framework.building.artifact_build_organizer import ArtifactBuildOrganizer
 from expkit.framework.building.build_job import BuildJob
 from expkit.framework.parser import RootElement, GroupElement, ArtifactElement
-import matplotlib.pyplot as plt #todo remove
+
+
+LOGGER = get_logger(__name__)
 
 
 class BuildOrganizer:
@@ -56,7 +57,29 @@ class BuildOrganizer:
 
             for job in jobs:
                 for payload_type, artifact, platform, architecture in job.required_deps:
-                    pass
+                    artifact_build: ArtifactBuildOrganizer = self.artifact_build_pipeline[artifact.artifact_name]
+                    job.dependencies.clear()
+
+                    found = False
+                    for finish_job in artifact_build.finish_nodes:
+                        if finish_job.target_type == payload_type and finish_job.target_platform == platform and finish_job.target_architecture == architecture:
+                            if found:
+                                LOGGER.warning(f"Found multiple suitable dependencies for job {job} using ({payload_type.name}, {artifact.artifact_name}, {platform.name}, {architecture.name}).")
+                            else:
+                                # Check build order
+                                try:
+                                    target_artifact_index = self.config.build_order.index(job.definition.parent)
+                                    dep_artifact_index = self.config.build_order.index(finish_job.definition.parent)
+                                except ValueError:
+                                    raise ValueError("Artifact not found in build order.")
+
+                                assert target_artifact_index >= 0 and dep_artifact_index >= 0, "Artifact not found in build order."
+                                assert target_artifact_index > dep_artifact_index, f"Build order violation: {job} depends on {finish_job}."
+
+                                job.dependencies.append(finish_job)
+                                found = True
+                    if not found:
+                        raise ValueError(f"Could not find suitable dependency ({payload_type.name}, {artifact.artifact_name}, {platform.name}, {architecture.name}) for {job}")
 
             self.graph = nx.DiGraph()
             self.graph.add_nodes_from(jobs)
@@ -67,13 +90,12 @@ class BuildOrganizer:
                 for dep in job.dependencies:
                     self.graph.add_edge(dep, job, type="dependency")
 
-            # todo remove
-            for job in jobs:
-                if job.parent is None and len(job.children) == 0:
-                    self.graph.remove_node(job)
-            nx.draw_circular(self.graph, with_labels=True, font_size=1.5, node_size=10)
-            plt.savefig("/tmp/graph.pdf")
-            pass
+            # Debug draw graph
+            # for job in jobs:
+            #     if job.parent is None and len(job.children) == 0:
+            #         self.graph.remove_node(job)
+            # nx.draw_circular(self.graph, with_labels=True, font_size=1.5, node_size=10)
+            # plt.savefig("/tmp/graph.pdf")
 
     class BuildProxy():
         def __init__(self, build_organizer: "BuildOrganizer", artifact: ArtifactElement, platform: Platform, architecture: Architecture):

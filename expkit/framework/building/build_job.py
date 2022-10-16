@@ -42,6 +42,9 @@ class BuildJob:
                  target_architecture: Architecture,
                  callback: Callable[["BuildJob"], None]):
 
+        assert target_platform is not None and target_platform.is_single()
+        assert target_architecture is not None and target_architecture.is_single()
+
         self.definition = definition
         self.group = group
         self.callback = callback
