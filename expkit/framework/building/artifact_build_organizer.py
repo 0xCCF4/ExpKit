@@ -10,17 +10,15 @@ from expkit.framework.parser import RootElement, ArtifactElement
 
 class ArtifactBuildOrganizer:
     @type_guard
-    def __init__(self, config: ArtifactElement, organizers: Dict[str, "ArtifactBuildOrganizer"]):
+    def __init__(self, config: ArtifactElement, organizer: "BuildOrganizer"):
         self.config = config
         self.__initialized = False
         self.__lock = threading.RLock()
 
-        self.organizers = organizers
+        self.organizer = organizer
 
         self.empty_root_nodes: Dict[Tuple[Platform, Architecture], BuildJob] = {}
         self.finish_nodes: List[BuildJob] = []
-
-        self.queued_jobs: List[BuildJob] = []
 
     @property
     def lock(self) -> threading.RLock:
@@ -79,8 +77,6 @@ class ArtifactBuildOrganizer:
                         if parent not in queue:
                             queue.append(parent)
 
-            self.queued_jobs = self.empty_root_nodes.copy()
-
     @type_guard
     def notify_job_complete(self, job: BuildJob):
         with self.__lock:
@@ -97,6 +93,7 @@ class ArtifactBuildOrganizer:
                     with child.lock:
                         assert child.state.is_pending()
                         children.extend(child.children)
+                        children.extend(child.dependants)
 
                         callback = child.callback
                         child.callback = None  # prevent recursion
@@ -104,51 +101,25 @@ class ArtifactBuildOrganizer:
                         child.mark_skipped()
                         child.callback = callback
 
-    def has_more(self, platform: Optional[Platform] = None, architecture: Optional[Architecture] = None, include_running: bool = False) -> bool:
-        assert platform.is_single()
-        assert architecture.is_single()
-        with self.__lock:
-            assert self.__initialized, "BuildOrganizer must be initialized before use."
+        self.organizer.notify_job_complete(job)
 
-            for fjob in self.finish_nodes:
-                if platform is not None and fjob.target_platform != platform:
-                    continue
-                if architecture is not None and fjob.target_architecture != architecture:
-                    continue
-                if fjob.state.is_pending():
-                    return True
-                if fjob.state.is_running() and include_running:
-                    return True
-
-        return False
-
-    def get_next(self, platform: Optional[Platform] = None, architecture: Optional[Architecture] = None) -> Optional[BuildJob]:
-        assert platform.is_single()
-        assert architecture.is_single()
-        with self.__lock:
-            assert self.__initialized, "BuildOrganizer must be initialized before use."
-
-            index = 0
-            while index < len(self.queued_jobs):
-                job = self.queued_jobs[index]
-
-                if not job.state.is_pending():
-                    self.queued_jobs.pop(index)
-                    self.queued_jobs.extend(job.children)
-                    continue
-
-                if platform is not None and job.target_platform != platform:
-                    index += 1
-                    continue
-                if architecture is not None and job.target_architecture != architecture:
-                    index += 1
-                    continue
-
-                assert job.state.is_pending()
-                return job
-
-            assert len(self.queued_jobs) <= 0
-            return None
+    # def has_more(self, platform: Optional[Platform] = None, architecture: Optional[Architecture] = None, include_running: bool = False) -> bool:
+    #     assert platform.is_single()
+    #     assert architecture.is_single()
+    #     with self.__lock:
+    #         assert self.__initialized, "BuildOrganizer must be initialized before use."
+    # 
+    #         for fjob in self.finish_nodes:
+    #             if platform is not None and fjob.target_platform != platform:
+    #                 continue
+    #             if architecture is not None and fjob.target_architecture != architecture:
+    #                 continue
+    #             if fjob.state.is_pending():
+    #                 return True
+    #             if fjob.state.is_running() and include_running:
+    #                 return True
+    # 
+    #     return False
 
     def all_completed(self) -> bool:
         with self.__lock:
@@ -160,16 +131,28 @@ class ArtifactBuildOrganizer:
 
             return True
 
-    def get_outputs(self, platform: Platform, architecture: Architecture) -> List[Payload]:
+    def get_output(self, platform: Platform, architecture: Architecture, payload_type: PayloadType) -> Optional[Payload]:
         with self.__lock:
             assert self.__initialized, "BuildOrganizer must be initialized before use."
 
             outputs = []
 
-            for fjob in self.finish_nodes:
-                if fjob.target_platform == platform and fjob.target_architecture == architecture:
-                    if fjob.state == JobState.SUCCESS:
-                        if fjob.job_result is not None:
-                            outputs.append(fjob.job_result)
+            fjob = self.get_output_job(platform, architecture, payload_type)
+            if fjob is None:
+                raise ValueError(f"Could not find output job for {platform} {architecture} {payload_type}")
 
-            return outputs
+            if fjob.state == JobState.SUCCESS:
+                if fjob.job_result is not None:
+                    return fjob.job_result
+
+            return None
+
+    def get_output_job(self, platform: Platform, architecture: Architecture, payload_type: PayloadType) -> Optional[BuildJob]:
+        with self.__lock:
+            assert self.__initialized, "BuildOrganizer must be initialized before use."
+
+            for fjob in self.finish_nodes:
+                if fjob.target_platform == platform and fjob.target_architecture == architecture and fjob.target_type == payload_type:
+                    return fjob
+
+            return None

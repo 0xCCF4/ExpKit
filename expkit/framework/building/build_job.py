@@ -57,6 +57,7 @@ class BuildJob:
         self.children: List[BuildJob] = []
         self.required_deps: List[Tuple[PayloadType, ArtifactElement, Platform, Architecture]] = []
         self.dependencies: List[BuildJob] = []
+        self.dependants: List[BuildJob] = []
 
         self.start_time: Optional[datetime] = None
         self.stop_time: Optional[datetime] = None

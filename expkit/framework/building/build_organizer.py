@@ -1,5 +1,5 @@
 import threading
-from typing import Optional, Dict, List, Tuple
+from typing import Optional, Dict, List, Tuple, Callable
 
 import networkx as nx
 
@@ -17,6 +17,11 @@ LOGGER = get_logger(__name__)
 
 
 class BuildOrganizer:
+    class BuildCallback:
+        def __init__(self):
+            self.called: bool = False
+            self.callbacks: List[Callable[["BuildJob"], None]] = []
+    
     @type_guard
     def __init__(self, config: RootElement):
         self.config = config
@@ -25,7 +30,9 @@ class BuildOrganizer:
         self.graph = nx.DiGraph()
 
         self.artifact_build_pipeline: Dict[str, ArtifactBuildOrganizer] = {}
-        self.build_proxies: Dict[Tuple[str, Platform, Architecture], "BuildOrganizer.BuildProxy"] = {}
+
+        self.target_jobs: Dict[BuildJob, "BuildOrganizer.BuildCallback"] = {}
+        self.open_jobs: List[BuildJob] = []
 
     def initialize(self):
         with self.__lock:
@@ -81,14 +88,22 @@ class BuildOrganizer:
                     if not found:
                         raise ValueError(f"Could not find suitable dependency ({payload_type.name}, {artifact.artifact_name}, {platform.name}, {architecture.name}) for {job}")
 
+            for job in jobs:
+                for dep in job.dependencies:
+                    if job not in dep.dependants:
+                        dep.dependants.append(job)
+
             self.graph = nx.DiGraph()
             self.graph.add_nodes_from(jobs)
 
             for job in jobs:
                 for child in job.children:
-                    self.graph.add_edge(job, child)
+                    self.graph.add_edge(job, child, type="parent")
                 for dep in job.dependencies:
                     self.graph.add_edge(dep, job, type="dependency")
+
+            for source in [x for x in self.graph.nodes if nx.in_degree(x) == 0]:
+                self.open_jobs.append(source)
 
             # Debug draw graph
             # for job in jobs:
@@ -97,29 +112,9 @@ class BuildOrganizer:
             # nx.draw_circular(self.graph, with_labels=True, font_size=1.5, node_size=10)
             # plt.savefig("/tmp/graph.pdf")
 
-    class BuildProxy():
-        def __init__(self, build_organizer: "BuildOrganizer", artifact: ArtifactElement, platform: Platform, architecture: Architecture):
-            self.artifact_config = artifact
-            self.platform = platform
-            self.architecture = architecture
-            self.build_organizer = build_organizer
-            self.artifact_organizer = build_organizer.artifact_build_pipeline[artifact.artifact_name]
-            assert self.artifact_organizer is not None
+    def build(self, artifact_name: str, platform: Platform, architecture: Architecture, payload_type: PayloadType, callback: Optional[Callable[[BuildJob], None]] = None):
+        final_callback = None
 
-            self.__lock = threading.RLock()
-
-        def has_next(self, include_running: bool = False) -> bool:
-            with self.__lock:
-                return self.artifact_organizer.has_more(self.platform, self.architecture, include_running=include_running)
-
-        def get_outputs(self) -> List[Payload]:
-            with self.__lock:
-                return self.artifact_organizer.get_outputs(self.platform, self.architecture)
-
-        def get_next(self) -> Optional[BuildJob]:
-            pass
-
-    def build(self, artifact_name: str, platform: Platform, architecture: Architecture) -> "BuildProxy":
         with self.__lock:
             assert self.__initialized, "BuildOrganizer must be initialized before calling build()."
 
@@ -127,7 +122,35 @@ class BuildOrganizer:
             if artifact is None:
                 raise ValueError(f"Artifact '{artifact_name}' is not defined in the configuration.")
 
-            if (artifact_name, platform, architecture) not in self.build_proxies:
-                self.build_proxies[(artifact_name, platform, architecture)] = self.BuildProxy(self, artifact, platform, architecture)
+            if callback is None:
+                def callback(job: BuildJob):
+                    LOGGER.info(f"Finished building {job}. No callback registered.")
 
-            return self.build_proxies[(artifact_name, platform, architecture)]
+            artifact_build = self.artifact_build_pipeline.get(artifact_name, None)
+            if artifact_build is None:
+                raise ValueError(f"Artifact '{artifact_name}' build pipeline not found.")
+
+            target_job = artifact_build.get_output_job(platform, architecture, payload_type)
+            if target_job is None:
+                raise ValueError(f"Could not find suitable output job for ({payload_type.name}, {platform.name}, {architecture.name})")
+
+            if target_job in self.target_jobs:
+                build_callback = self.target_jobs[target_job]
+            else:
+                self.target_jobs[target_job] = (build_callback := BuildOrganizer.BuildCallback())
+
+            if build_callback.called:
+                final_callback = callback
+
+            build_callback.callbacks.append(callback)
+
+        if final_callback is not None:
+            final_callback(target_job)
+
+    def notify_job_complete(self, job: BuildJob):
+        pass
+
+    def __iter__(self):
+        pass
+
+
