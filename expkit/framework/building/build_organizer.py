@@ -32,7 +32,6 @@ class BuildOrganizer:
         self.artifact_build_pipeline: Dict[str, ArtifactBuildOrganizer] = {}
 
         self.target_jobs: Dict[BuildJob, "BuildOrganizer.BuildCallback"] = {}
-        self.open_jobs: List[BuildJob] = []
 
     def initialize(self):
         with self.__lock:

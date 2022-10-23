@@ -141,3 +141,21 @@ class BuildJob:
 
     def __repr__(self):
         return str(self)
+
+    def can_build(self) -> bool:
+        for dep in self.dependencies:
+            if not dep.state.is_success():
+                return False
+        if self.parent is not None and not self.parent.state.is_success():
+            return False
+        return True
+
+    def build_before(self) -> List["BuildJob"]:
+        if self.can_build():
+            return []
+        else:
+            result = []
+            for dep in self.dependencies:
+                if dep.can_build() and not dep.state.is_finished():
+                    result.append(dep)
+            return result
