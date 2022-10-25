@@ -16,3 +16,12 @@ def deepcopy_dict_remove_private(obj: dict) -> dict:
 
     return data
 
+
+def bit_count(value: int) -> int:
+    assert value >= 0
+    count = 0
+    while value > 0:
+        if (value & 1) != 0:
+            count += 1
+        value = value >> 1
+    return count
