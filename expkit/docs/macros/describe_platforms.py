@@ -1,5 +1,6 @@
 from expkit.base.architecture import Platform, Architecture
-from expkit.docs.utils import mkdocs_macro, escape_markdown
+from expkit.docs.utils import mkdocs_macro
+from expkit.docs.macros.utils import escape_markdown, markdown_anchor
 
 
 @mkdocs_macro

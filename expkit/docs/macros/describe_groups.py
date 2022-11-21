@@ -4,7 +4,8 @@ from typing import Dict, Tuple, List
 from expkit.base.architecture import TargetPlatform, Platform
 from expkit.docs.macros.platform import platform_icon, describe_target_platform
 from expkit.framework.database import TaskDatabase, StageDatabase, GroupDatabase
-from expkit.docs.utils import mkdocs_macro, escape_markdown, markdown_anchor
+from expkit.docs.utils import mkdocs_macro
+from expkit.docs.macros.utils import escape_markdown, markdown_anchor
 
 
 @mkdocs_macro
