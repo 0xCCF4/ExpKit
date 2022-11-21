@@ -1,11 +1,5 @@
 # Getting started
 
-ExploitKit ([ExpKit](https://gitlab.com/0xCCF4/expkit))
-is a framework and build automation tool
-to process exploits/payloads to evade antivirus and
-endpoint detection response products using reusable
-building blocks like encryption or obfuscation stages.
-
 ## Installation
 
 ExpKit can be installed locally using `pip` and `python3.10`,

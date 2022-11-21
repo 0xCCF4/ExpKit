@@ -1,4 +1,4 @@
-# Getting started
+# ExploitKit (ExpKit) - AD/EDR evasion framework
 
 ExploitKit ([ExpKit](https://gitlab.com/0xCCF4/expkit))
 is a framework and build automation tool
@@ -6,7 +6,33 @@ to process exploits/payloads to evade antivirus and
 endpoint detection response products using reusable
 building blocks like encryption or obfuscation stages.
 
+ExpKit automatises the process of modifying exploits/payloads
+to evade antivirus and endpoint detection response products by
+providing a development/build framework to compile/process
+exploit/payload code. Write your evasion processing
+stages once and reuse them on your exploit/payloads.
+See the [documentation](https://0xccf4.gitlab.io/expkit/api/groups/)
+for a list of already included
+stages. Those reusable blocks expose parameters
+to the user to configure them. Allowing further
+customization to prevent detection. A multi-platform (os and architecture)
+allows processing exploits/payloads for different
+operating systems and architectures.
+
 For the full documentation visit the [docs](https://0xccf4.gitlab.io/expkit/).
+
+Project status: __In development - pre-alpha__
+
+## Features
+
+* Modular design
+* Build automation
+* Reusable building blocks
+* Easy to extend with custom processing stages
+* Multi-platform (os and architecture) support
+* On-the-fly compilation on web request
+* Randomized build output on every build (e.g. random encryption keys)
+* Common evasion techniques already (parameterized) implemented (__WIP__)
 
 ## Installation
 
@@ -25,13 +51,14 @@ pip install expkit-framework
 
 This will install ExpKit and all its runtime dependencies.
 
-## Creating a new project
+## Projects
 
-Create a new folder containing a `config.json` file and
-your exploit/payload code. The `config.json` contains
-the configuration for the project. The following example
-shows an example configuration for a C# project assuming
-the C# project is located in a sub folder named `payload_code`:
+Projects are configured by a `config.json` file that
+includes the definition of the stages to execute and
+artifacts (exploits/payloads) to build. The following
+code block contains an example configuration for a C#
+project: A C# project is loaded from the folder `payload_code`
+obfuscated, compiled and exported as `build.exe`.
 
 ```json
 {
@@ -42,6 +69,7 @@ the C# project is located in a sub folder named `payload_code`:
   "artifacts": {
     "base": {
       "stages": [
+        
         {
           "name": "LOAD_FOLDER",
           "config": {
@@ -49,14 +77,18 @@ the C# project is located in a sub folder named `payload_code`:
             "LOAD_TARGET_FORMAT": "CSHARP_PROJECT"
           }
         },
+        
         { "name": "OBFUSCATE_CSHARP" },
+        
         { "name": "COMPILE_CSHARP" },
+        
         {
           "name": "EXPORT",
           "config": {
             "EXPORT_NAME": "build.exe"
           }
         }
+        
       ]
     }
   }
@@ -64,9 +96,9 @@ the C# project is located in a sub folder named `payload_code`:
 ```
 
 The syntax of the configuration file is described within the
-[API Reference](../api/configuration) section.
+[API Reference](https://0xccf4.gitlab.io/expkit/api/configuration/) section.
 
-## Building the project
+## Building a project
 
 To build the project, run the following command:
 
