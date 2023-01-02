@@ -42,6 +42,9 @@ class BuildJob:
                  target_architecture: Architecture,
                  callback: Callable[["BuildJob"], None]):
 
+        assert target_platform is not None and target_platform.is_single()
+        assert target_architecture is not None and target_architecture.is_single()
+
         self.definition = definition
         self.group = group
         self.callback = callback
@@ -54,6 +57,7 @@ class BuildJob:
         self.children: List[BuildJob] = []
         self.required_deps: List[Tuple[PayloadType, ArtifactElement, Platform, Architecture]] = []
         self.dependencies: List[BuildJob] = []
+        self.dependants: List[BuildJob] = []
 
         self.start_time: Optional[datetime] = None
         self.stop_time: Optional[datetime] = None
@@ -137,3 +141,21 @@ class BuildJob:
 
     def __repr__(self):
         return str(self)
+
+    def can_build(self) -> bool:
+        for dep in self.dependencies:
+            if not dep.state.is_success():
+                return False
+        if self.parent is not None and not self.parent.state.is_success():
+            return False
+        return True
+
+    def build_before(self) -> List["BuildJob"]:
+        if self.can_build():
+            return []
+        else:
+            result = []
+            for dep in self.dependencies:
+                if dep.can_build() and not dep.state.is_finished():
+                    result.append(dep)
+            return result

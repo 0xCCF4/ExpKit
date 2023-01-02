@@ -86,6 +86,7 @@ nav:
     - Stages: api/stages.md
     - Tasks: api/tasks.md
     - Payload Types: api/payloads.md
+    - Platforms: api/platforms.md
   - About:
     - Contributing: about/contributing.md
     - License: about/license.md

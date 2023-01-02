@@ -67,28 +67,42 @@ class BuildOrganizer:
 
             for job in jobs:
                 for payload_type, artifact, platform, architecture in job.required_deps:
-                    pipeline = self.artifact_build_pipeline[artifact.artifact_name]
-                    possible_jobs = pipeline.finish_nodes
-                    target_dep = None
-                    for possible_job in possible_jobs:
-                        if possible_job.target_type == payload_type and possible_job.target_platform == platform and possible_job.target_architecture == architecture:
-                            # todo add possibility to rebuild all dependencies and "clone" dep graph
-                            job.dependencies.append(target_dep := possible_job)
-                            break
-                    if target_dep is None:
-                        LOGGER.error(f"Could not find suitable dependency for job {job}. Artifact {artifact.artifact_name} does not provide a suitable build job.")
-                        LOGGER.debug(f"Requested dependency: {payload_type.name} {platform.name} {architecture.name}")
-                        available_deps = [f" - {dep.target_type.name} {dep.target_platform.name} {dep.target_architecture.name} - {dep}\n" for dep in possible_jobs]
-                        LOGGER.debug(f"Available dependencies: \n{''.join(available_deps)}")
+                    artifact_build: ArtifactBuildOrganizer = self.artifact_build_pipeline[artifact.artifact_name]
+                    job.dependencies.clear()
+
+                    found = False
+                    for finish_job in artifact_build.finish_nodes:
+                        if finish_job.target_type == payload_type and finish_job.target_platform == platform and finish_job.target_architecture == architecture:
+                            if found:
+                                LOGGER.warning(f"Found multiple suitable dependencies for job {job} using ({payload_type.name}, {artifact.artifact_name}, {platform.name}, {architecture.name}).")
+                            else:
+                                # Check build order
+                                try:
+                                    target_artifact_index = self.config.build_order.index(job.definition.parent)
+                                    dep_artifact_index = self.config.build_order.index(finish_job.definition.parent)
+                                except ValueError:
+                                    raise ValueError("Artifact not found in build order.")
+
+                                assert target_artifact_index >= 0 and dep_artifact_index >= 0, "Artifact not found in build order."
+                                assert target_artifact_index > dep_artifact_index, f"Build order violation: {job} depends on {finish_job}."
+
+                                job.dependencies.append(finish_job)
+                                found = True
+                    if not found:
+                        raise ValueError(
+                            f"Could not find suitable dependency ({payload_type.name}, {artifact.artifact_name}, {platform.name}, {architecture.name}) for {job}")
 
             self.graph = nx.DiGraph()
             self.graph.add_nodes_from(jobs)
 
             for job in jobs:
                 for child in job.children:
-                    self.graph.add_edge(job, child)
+                    self.graph.add_edge(job, child, type="parent")
                 for dep in job.dependencies:
                     self.graph.add_edge(dep, job, type="dependency")
+
+            for job in jobs:
+                self.scheduling_info[job] = JobSchedulingInfo.NOT_SCHEDULED
 
             for job in jobs:
                 self.scheduling_info[job] = JobSchedulingInfo.NOT_SCHEDULED
