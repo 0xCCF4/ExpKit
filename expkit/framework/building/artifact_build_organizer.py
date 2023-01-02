@@ -10,12 +10,12 @@ from expkit.framework.parser import RootElement, ArtifactElement
 
 class ArtifactBuildOrganizer:
     @type_guard
-    def __init__(self, config: ArtifactElement, organizers: Dict[str, "ArtifactBuildOrganizer"]):
+    def __init__(self, config: ArtifactElement, build_organizer: "BuildOrganizer"):
         self.config = config
         self.__initialized = False
         self.__lock = threading.RLock()
 
-        self.organizers = organizers
+        self.build_organizer = build_organizer
 
         self.empty_root_nodes: Dict[Tuple[Platform, Architecture], BuildJob] = {}
         self.finish_nodes: List[BuildJob] = []
@@ -83,6 +83,8 @@ class ArtifactBuildOrganizer:
 
     @type_guard
     def notify_job_complete(self, job: BuildJob):
+        updated_jobs = [job]
+
         with self.__lock:
             assert self.__initialized, "BuildOrganizer must be initialized before use."
             if job in self.empty_root_nodes.values():
@@ -94,6 +96,7 @@ class ArtifactBuildOrganizer:
                 children = job.children.copy()
                 while len(children) > 0:
                     child = children.pop(0)
+                    updated_jobs.append(child)
                     with child.lock:
                         assert child.state.is_pending()
                         children.extend(child.children)
@@ -103,6 +106,9 @@ class ArtifactBuildOrganizer:
                         child.mark_running()
                         child.mark_skipped()
                         child.callback = callback
+
+        for updated_job in reversed(updated_jobs):
+            self.build_organizer._update_job(updated_job)
 
     def has_more(self, platform: Optional[Platform] = None, architecture: Optional[Architecture] = None, include_running: bool = False) -> bool:
         assert platform.is_single()

@@ -36,14 +36,14 @@ class ParserBlock:
         if not self._config_cache:
             self._config_cache = {}
 
-            if self.get_name() == "root":
+            if self.get_block_type() == "root":
                 self._config_cache = copy.deepcopy(self.config)
-            elif self.get_name() == "artifact" or self.get_name() == "group":
+            elif self.get_block_type() == "artifact" or self.get_block_type() == "group":
                 self._config_cache = copy.deepcopy(self.parent.get_config()) # use parent config as template
                 for key, value in self.config.items(): # override with current config
                     self._config_cache[key] = copy.deepcopy(value)
             else:
-                raise RuntimeError(f"Unknown block type: {self.get_name()}")
+                raise RuntimeError(f"Unknown block type: {self.get_block_type()}")
 
         return self._config_cache
 

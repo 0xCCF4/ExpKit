@@ -1,4 +1,5 @@
 import textwrap
+import time
 
 from expkit.base.architecture import Platform, Architecture
 from expkit.base.command.base import CommandTemplate, CommandOptions, CommandArgumentCount
@@ -58,27 +59,25 @@ class ServerCommand(CommandTemplate):
         build_organizer = BuildOrganizer(root)
         build_organizer.initialize()
 
-        build_proxies = []
-
         if options.artifacts is None:
             for artifact in root.build_order:
-                proxy = build_organizer.build(artifact.artifact_name, platform, architecture)
-                build_proxies.append(proxy)
+                build_organizer.queue_job(artifact, platform, architecture)
 
         else:
             for artifact in options.artifacts:
-                proxy = build_organizer.build(artifact, platform, architecture)
-                build_proxies.append(proxy)
+                build_organizer.queue_job(artifact, platform, architecture)
 
         # Placeholder
         executor = LocalBuildExecutor()
         executor.initialize()
 
-        #for proxy in build_proxies:
-        #    while proxy.has_next():
-        #        job = proxy.get_next()
-        #        if job is not None:
-        #            executor.execute_job(job)
+        for job, nBuilding, nWaiting in build_organizer.build():
+            LOGGER.debug(f"{nWaiting} jobs are waiting to be built.")
+            if job is None:
+                LOGGER.info(f"Waiting for {nBuilding} jobs to complete...")
+                time.sleep(1)
+            else:
+                executor.execute_job(job)
 
         executor.shutdown()
 

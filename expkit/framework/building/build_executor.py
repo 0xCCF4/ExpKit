@@ -27,10 +27,10 @@ class LocalBuildExecutor(BuildExecutor):
             assert job.parent.state == JobState.SUCCESS, "Parent job must be successful."
             assert job.parent.job_result is not None, "Parent job must have a result."
 
-            assert len(job.required_deps) == len(job.actual_deps), "Job must have all dependencies resolved."
+            assert len(job.required_deps) == len(job.dependencies), "Job must have all dependencies resolved."
             deps = []
 
-            for (dep_type, _, _, _), dep in zip(job.required_deps, job.actual_deps):
+            for (dep_type, _, _, _), dep in zip(job.required_deps, job.dependencies):
                 assert dep_type == dep.target_type, "Dependency type must match."
                 assert dep.state == JobState.SUCCESS, "Dependency must be successful."
                 assert dep.job_result is not None, "Dependency must have a result."
@@ -56,7 +56,7 @@ class LocalBuildExecutor(BuildExecutor):
                 LOGGER.info(f"Skipping job {job} because {e.message}")
             except Exception as e:
                 job.mark_error()
-                LOGGER.error(f"Job {job} failed with exception", e)
+                LOGGER.error(f"Job {job} failed with exception: {e.with_traceback(e.__traceback__)}")
 
     def execute_job(self, job: BuildJob):
         with job.lock:
