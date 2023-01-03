@@ -5,6 +5,7 @@ from expkit.base.architecture import Platform, Architecture
 from expkit.base.command.base import CommandTemplate, CommandOptions, CommandArgumentCount
 from expkit.base.logger import get_logger
 from expkit.framework.building.build_executor import LocalBuildExecutor
+from expkit.framework.building.build_job import JobState
 from expkit.framework.building.build_organizer import BuildOrganizer
 from expkit.framework.database import register_command
 from expkit.framework.parser import ConfigParser
@@ -59,26 +60,56 @@ class ServerCommand(CommandTemplate):
         build_organizer = BuildOrganizer(root)
         build_organizer.initialize()
 
+        target_jobs = []
+
         if options.artifacts is None:
             for artifact in root.build_order:
-                build_organizer.queue_job(artifact, platform, architecture)
+                target_jobs.extend(build_organizer.queue_job(artifact, platform, architecture))
 
         else:
             for artifact in options.artifacts:
-                build_organizer.queue_job(artifact, platform, architecture)
+                target_jobs.extend(build_organizer.queue_job(artifact, platform, architecture))
 
         # Placeholder
         executor = LocalBuildExecutor()
         executor.initialize()
 
-        for job, nBuilding, nWaiting in build_organizer.build():
-            LOGGER.debug(f"{nWaiting} jobs are waiting to be built.")
+        for job in build_organizer.build():
+            LOGGER.debug(f"{len(build_organizer.open_jobs())} jobs are waiting to be built.")
             if job is None:
-                LOGGER.info(f"Waiting for {nBuilding} jobs to complete...")
+                LOGGER.info(f"Waiting for {len(build_organizer.building_jobs())} jobs to complete...")
                 time.sleep(1)
             else:
-                executor.execute_job(job)
+                LOGGER.debug(f"Building {job}...")
+                try:
+                    executor.execute_job(job)
+                except Exception as e:
+                    LOGGER.error(f"Failed to build {job}: {e}")
+                    job.mark_error()
 
         executor.shutdown()
+
+        LOGGER.debug("Build summary:")
+        jobs = target_jobs.copy()
+        seen_jobs = []
+        while len(jobs) > 0:
+            job = jobs.pop(0)
+            if job is None: continue
+            if job in seen_jobs: continue
+            seen_jobs.append(job)
+
+            if job.state == JobState.FAILED:
+                LOGGER.error(f"Error building {job}.")
+            elif job.state == JobState.SUCCESS:
+                LOGGER.debug(f"Successfully built {job}.")
+            elif job.state == JobState.SKIPPED:
+                LOGGER.warning(f"Skipped building {job}.")
+
+            for dep in reversed(job.dependencies):
+                jobs.insert(0, dep)
+
+            jobs.insert(0, job.parent)
+
+            jobs.extend(job.children)
 
         return True

@@ -1,6 +1,6 @@
 import threading
 from enum import auto, IntEnum
-from typing import  Dict, List, Tuple, Iterator
+from typing import Dict, List, Tuple, Iterator, Optional
 
 import networkx as nx
 
@@ -127,32 +127,36 @@ class BuildOrganizer:
                 # assume job is ready to build
                 result = JobSchedulingInfo.READY_TO_BUILD
 
-                for dep in job.dependencies:
-                    dep_info = self.scheduling_info[dep]
-
-                    if dep_info == JobSchedulingInfo.NOT_SCHEDULED:
-                        self._update_job(dep)
+                if job.state.is_finished():
+                    result = JobSchedulingInfo.FINISHED
+                else:
+                    for dep in [job.parent, *job.dependencies]:
+                        if dep is None: continue
                         dep_info = self.scheduling_info[dep]
 
-                    assert dep_info != JobSchedulingInfo.NOT_SCHEDULED, "Dependency not scheduled."
+                        if dep_info == JobSchedulingInfo.NOT_SCHEDULED:
+                            self._update_job(dep, queue_job=queue_job)
+                            dep_info = self.scheduling_info[dep]
 
-                    if dep_info == JobSchedulingInfo.BLOCKED_BY_DEPENDENCY:
-                        result = JobSchedulingInfo.BLOCKED_BY_DEPENDENCY
-                        break
-                    elif dep_info == JobSchedulingInfo.BUILDING:
-                        result = JobSchedulingInfo.BLOCKED_BY_DEPENDENCY
-                        break
-                    elif dep_info == JobSchedulingInfo.READY_TO_BUILD:
-                        result = JobSchedulingInfo.BLOCKED_BY_DEPENDENCY
-                        break
-                    elif dep_info == JobSchedulingInfo.FINISHED:
-                        assert dep.state.is_finished(), "Dependency finished but not in finished state."
-                        if dep.state.is_success():
-                            continue # dependency finished successfully, we can continue
-                        else:
-                            # job state failed or skipped
-                            result = JobSchedulingInfo.FINISHED
+                        assert dep_info != JobSchedulingInfo.NOT_SCHEDULED, "Dependency not scheduled."
+
+                        if dep_info == JobSchedulingInfo.BLOCKED_BY_DEPENDENCY:
+                            result = JobSchedulingInfo.BLOCKED_BY_DEPENDENCY
                             break
+                        elif dep_info == JobSchedulingInfo.BUILDING:
+                            result = JobSchedulingInfo.BLOCKED_BY_DEPENDENCY
+                            break
+                        elif dep_info == JobSchedulingInfo.READY_TO_BUILD:
+                            result = JobSchedulingInfo.BLOCKED_BY_DEPENDENCY
+                            break
+                        elif dep_info == JobSchedulingInfo.FINISHED:
+                            assert dep.state.is_finished(), "Dependency finished but not in finished state."
+                            if dep.state.is_success():
+                                continue # dependency finished successfully, we can continue
+                            else:
+                                # job state failed or skipped
+                                result = JobSchedulingInfo.FINISHED
+                                break
 
             elif info == JobSchedulingInfo.BLOCKED_BY_DEPENDENCY:
                 # check if job is still blocked by dependency
@@ -160,8 +164,9 @@ class BuildOrganizer:
                 # assume job is ready to build
                 result = JobSchedulingInfo.READY_TO_BUILD
 
-                for dep in job.dependencies:
-                    self._update_job(dep)
+                for dep in [job.parent, *job.dependencies]:
+                    if dep is None: continue
+                    self._update_job(dep, queue_job=queue_job)
                     dep_info = self.scheduling_info[dep]
 
                     if dep_info == JobSchedulingInfo.FINISHED:
@@ -201,8 +206,6 @@ class BuildOrganizer:
             # set mew scheduling info
             self.scheduling_info[job] = result
 
-        return self.build()
-
     def queue_job(self, artifact: ArtifactElement, platform: Platform, architecture: Architecture):
         jobs = self.artifact_build_pipeline[artifact.artifact_name].finish_nodes
         target_jobs = []
@@ -216,41 +219,58 @@ class BuildOrganizer:
         with self.__lock:
             for job in target_jobs:
                 if job in self.queued_jobs:
-                    return
+                    continue
 
                 self.queued_jobs.append(job)
                 self._update_job(job, queue_job=True)
+
+        return target_jobs
 
     def update_job_state(self, job: BuildJob):
         assert job in self.jobs, "Job is not part of the build pipeline."
 
         with self.__lock:
-            self._update_job(job)
+            self._update_job(job, queue_job=False)
 
-    def build(self) -> Iterator[Tuple[BuildJob, int, int]]:
+    def open_jobs(self):
+        open_jobs = []
+
+        with self.__lock:
+            for potential_job, info in self.scheduling_info.items():
+                if info != JobSchedulingInfo.FINISHED and info != JobSchedulingInfo.NOT_SCHEDULED\
+                        and not potential_job.state.is_finished():
+                    open_jobs.append(potential_job)
+
+        return open_jobs
+
+    def building_jobs(self):
+        building_jobs = []
+
+        with self.__lock:
+            for potential_job, info in self.scheduling_info.items():
+                if info == JobSchedulingInfo.BUILDING and not potential_job.state.is_finished():
+                    building_jobs.append(potential_job)
+
+        return building_jobs
+
+    def build(self) -> Iterator[Optional[BuildJob]]:
         while True:
             # find next job to build
             jobs = []
 
-            number_open_jobs = 0
-            building_jobs = []
-
             with self.__lock:
                 for potential_job, info in self.scheduling_info.items():
-                    if info != JobSchedulingInfo.FINISHED and info != JobSchedulingInfo.NOT_SCHEDULED:
-                        number_open_jobs += 1
-                    if info == JobSchedulingInfo.BUILDING:
-                        building_jobs.append(potential_job)
-
                     if info == JobSchedulingInfo.READY_TO_BUILD:
                         self.scheduling_info[potential_job] = JobSchedulingInfo.BUILDING
                         jobs.append(potential_job)
 
-            if len(jobs) <= 0 and number_open_jobs <= 0:
+            if len(jobs) <= 0 and len(self.open_jobs()) <= 0:
                 # no job to build left
                 break
+            elif len(jobs) <= 0:
+                # no job to build right now
+                yield None
             else:
-                # build job
+                # issue build requests
                 for job in jobs:
-                    number_of_building_jobs = len([j for j in building_jobs if not j.state.is_finished()])
-                    yield job, number_of_building_jobs, number_open_jobs
+                    yield job

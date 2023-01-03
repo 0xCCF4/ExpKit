@@ -63,6 +63,8 @@ class LocalBuildExecutor(BuildExecutor):
             if not job.state.is_pending():
                 raise RuntimeError(f"Job is not pending. Job is in state {job.state.name}.")
 
+            job.mark_running()
+
             if job.target_platform in [Platform.DUMMY, Platform.get_system_platform()]:
                 self.__local_execute_job(job)
             else:

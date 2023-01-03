@@ -106,7 +106,7 @@ class ArtifactBuildOrganizer:
                         child.callback = callback
 
         for updated_job in reversed(updated_jobs):
-            self.build_organizer._update_job(updated_job)
+            self.build_organizer.update_job_state(updated_job)
 
     def has_more(self, platform: Optional[Platform] = None, architecture: Optional[Architecture] = None, include_running: bool = False) -> bool:
         assert platform.is_single()
