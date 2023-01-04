@@ -9,5 +9,6 @@ class SkipStageExecution(Exception):
     @type_guard
     def __init__(self, stage: StageTemplate, context: StageContext, message: str):
         super().__init__(message)
+        self.message = message
         self.context = context
         self.stage = stage

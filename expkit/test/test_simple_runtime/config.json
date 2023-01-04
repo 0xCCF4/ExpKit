@@ -28,7 +28,7 @@
       "stages": [
         {
           "name": "LOAD_DEPENDENCY",
-          "dependencies":  ["base"]
+          "dependencies":  ["base:DUMMY:DUMMY"]
         },
         {
           "name": "TEMPLATE_ENGINE",
