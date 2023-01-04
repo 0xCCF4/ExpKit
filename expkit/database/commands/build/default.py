@@ -85,7 +85,10 @@ class ServerCommand(CommandTemplate):
                     executor.execute_job(job)
                 except Exception as e:
                     LOGGER.error(f"Failed to build {job}: {e}")
-                    job.mark_error()
+                    with job.lock:
+                        if job.state.is_pending():
+                            job.mark_running()
+                        job.mark_error()
 
         executor.shutdown()
 
