@@ -29,11 +29,13 @@ class ArtifactBuildOrganizer:
             assert not self.__initialized, "BuildOrganizer can only be initialized once."
             self.__initialized = True
 
+            callback = self.build_organizer.notify_job_update
+
             for target_platform, target_architecture in TargetPlatform.ALL:
-                empty_root = BuildJob(None, None, PayloadType.EMPTY, target_platform, target_architecture, self.notify_job_complete)
-                empty_root.state = JobState.RUNNING
+                empty_root = BuildJob(None, None, PayloadType.EMPTY, target_platform, target_architecture, callback)
+                empty_root.mark_running(notify=False)
                 self.empty_root_nodes[(target_platform, target_architecture)] = empty_root
-                empty_root.mark_complete(Payload(PayloadType.EMPTY, bytes(), target_platform, target_architecture, None))
+                empty_root.mark_complete(Payload(PayloadType.EMPTY, bytes(), target_platform, target_architecture, None), notify=False)
 
                 last_jobs_set = [empty_root]
                 new_last_jobs_set = []
@@ -52,7 +54,7 @@ class ArtifactBuildOrganizer:
                             if len(dependency_types) == len(dependency_artifacts):
                                 for last_job in last_jobs_set:
                                     if last_job.target_type == group_input:
-                                        job = BuildJob(group_definition, group, group_output, target_platform, target_architecture, self.notify_job_complete)
+                                        job = BuildJob(group_definition, group, group_output, target_platform, target_architecture, callback)
                                         job.parent = last_job
 
                                         for dep_type, (dep_art, dep_plat, dep_arch) in zip(dependency_types, dependency_artifacts):
@@ -76,55 +78,24 @@ class ArtifactBuildOrganizer:
                         parent.children.append(job)
                         if parent not in queue:
                             queue.append(parent)
-        self.queued_jobs = self.empty_root_nodes.copy()
 
-    @type_guard
-    def notify_job_complete(self, job: BuildJob):
-        updated_jobs = [job]
-
-        with self.__lock:
-            assert self.__initialized, "BuildOrganizer must be initialized before use."
-            if job in self.empty_root_nodes.values():
-                return
-
-            assert job.state.is_finished()
-
-            if not job.state.is_success():
-                children = job.children.copy()
-                while len(children) > 0:
-                    child = children.pop(0)
-                    updated_jobs.append(child)
-                    with child.lock:
-                        assert child.state.is_pending()
-                        children.extend(child.children)
-                        children.extend(child.dependants)
-
-                        callback = child.callback
-                        child.callback = None  # prevent recursion
-                        child.mark_running()
-                        child.mark_skipped()
-                        child.callback = callback
-
-        for updated_job in reversed(updated_jobs):
-            self.build_organizer.update_job_state(updated_job)
-
-    def has_more(self, platform: Optional[Platform] = None, architecture: Optional[Architecture] = None, include_running: bool = False) -> bool:
-        assert platform.is_single()
-        assert architecture.is_single()
-        with self.__lock:
-            assert self.__initialized, "BuildOrganizer must be initialized before use."
-
-            for fjob in self.finish_nodes:
-                if platform is not None and fjob.target_platform != platform:
-                    continue
-                if architecture is not None and fjob.target_architecture != architecture:
-                    continue
-                if fjob.state.is_pending():
-                    return True
-                if fjob.state.is_running() and include_running:
-                    return True
-
-        return False
+    # def has_more(self, platform: Optional[Platform] = None, architecture: Optional[Architecture] = None, include_running: bool = False) -> bool:
+    #     assert platform.is_single()
+    #     assert architecture.is_single()
+    #     with self.__lock:
+    #         assert self.__initialized, "BuildOrganizer must be initialized before use."
+    #
+    #         for fjob in self.finish_nodes:
+    #             if platform is not None and fjob.target_platform != platform:
+    #                 continue
+    #             if architecture is not None and fjob.target_architecture != architecture:
+    #                 continue
+    #             if fjob.state.is_pending():
+    #                 return True
+    #             if fjob.state.is_running() and include_running:
+    #                 return True
+    #
+    #     return False
 
     def get_output(self, platform: Platform, architecture: Architecture, payload_type: PayloadType) -> Optional[Payload]:
         with self.__lock:

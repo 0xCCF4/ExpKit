@@ -87,6 +87,7 @@ class BuildOrganizer:
                                 assert target_artifact_index > dep_artifact_index, f"Build order violation: {job} depends on {finish_job}."
 
                                 job.dependencies.append(finish_job)
+                                finish_job.dependants.append(job)
                                 found = True
                     if not found:
                         raise ValueError(
@@ -191,6 +192,10 @@ class BuildOrganizer:
                 # job is building - check state
                 if job.state.is_finished():
                     result = JobSchedulingInfo.FINISHED
+                    self.scheduling_info[job] = result # update state to prevent infinite loop
+                    # propagate state to dependent jobs to unblock them
+                    for dep in [*job.children, *job.dependants]:
+                        self._update_job(dep, queue_job=queue_job)
                 else:
                     pass
 
@@ -198,6 +203,10 @@ class BuildOrganizer:
                 # job is already finished
                 if job in self.queued_jobs:
                     self.queued_jobs.remove(job)
+                pass
+
+            elif info == JobSchedulingInfo.NOT_SCHEDULED:
+                # job is not scheduled
                 pass
 
             else:
@@ -226,10 +235,25 @@ class BuildOrganizer:
 
         return target_jobs
 
-    def update_job_state(self, job: BuildJob):
+    def notify_job_update(self, job: BuildJob):
         assert job in self.jobs, "Job is not part of the build pipeline."
 
         with self.__lock:
+            with job.lock:
+                if job.state.is_finished():
+                    if job.state.is_success():
+                        pass
+                    else:
+                        # mark dependent jobs as skipped
+                        dependent_jobs = [*job.children, *job.dependants]
+                        for dep_job in dependent_jobs:
+                            dep_job.mark_running(notify=False)
+                            dep_job.mark_skipped(notify=False)
+
+                        # recurse down into the dependency tree
+                        for dep_job in dependent_jobs:
+                            self.notify_job_update(dep_job)
+
             self._update_job(job, queue_job=False)
 
     def open_jobs(self):

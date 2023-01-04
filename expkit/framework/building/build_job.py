@@ -96,40 +96,46 @@ class BuildJob:
         with self.lock:
             self.__job_result = value
 
-    def mark_running(self):
+    def mark_running(self, notify: bool = True):
         with self.lock:
             assert self.state == JobState.PENDING
 
             self.state = JobState.RUNNING
             self.start_time = datetime.now()
 
+            if notify and self.callback:
+                self.callback(self)
+
     @type_guard
-    def mark_complete(self, job_output: Payload):
+    def mark_complete(self, job_output: Payload, notify: bool = True):
         with self.lock:
             assert self.state == JobState.RUNNING
 
             self.job_result = job_output
             self.state = JobState.SUCCESS
             self.stop_time = datetime.now()
-            if self.callback:
+
+            if notify and self.callback:
                 self.callback(self)
 
-    def mark_error(self):
+    def mark_error(self, notify: bool = True):
         with self.lock:
             assert self.state == JobState.RUNNING
 
             self.state = JobState.FAILED
             self.stop_time = datetime.now()
-            if self.callback:
+
+            if notify and self.callback:
                 self.callback(self)
 
-    def mark_skipped(self):
+    def mark_skipped(self, notify: bool = True):
         with self.lock:
             assert self.state == JobState.RUNNING
 
             self.state = JobState.SKIPPED
             self.stop_time = datetime.now()
-            if self.callback:
+
+            if notify and self.callback:
                 self.callback(self)
 
     def __str__(self):

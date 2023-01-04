@@ -89,27 +89,8 @@ class ServerCommand(CommandTemplate):
 
         executor.shutdown()
 
-        LOGGER.debug("Build summary:")
-        jobs = target_jobs.copy()
-        seen_jobs = []
-        while len(jobs) > 0:
-            job = jobs.pop(0)
-            if job is None: continue
-            if job in seen_jobs: continue
-            seen_jobs.append(job)
-
-            if job.state == JobState.FAILED:
-                LOGGER.error(f"Error building {job}.")
-            elif job.state == JobState.SUCCESS:
-                LOGGER.debug(f"Successfully built {job}.")
-            elif job.state == JobState.SKIPPED:
-                LOGGER.warning(f"Skipped building {job}.")
-
-            for dep in reversed(job.dependencies):
-                jobs.insert(0, dep)
-
-            jobs.insert(0, job.parent)
-
-            jobs.extend(job.children)
+        # Debug print
+        for job, info in build_organizer.scheduling_info.items():
+            LOGGER.debug(f"{info.name}\t{job}")
 
         return True
