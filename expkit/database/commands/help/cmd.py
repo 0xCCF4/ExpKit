@@ -1,7 +1,7 @@
 import textwrap
 from typing import Optional
 
-from expkit.base.command.base import CommandTemplate, CommandOptions, CommandArgumentCount
+from expkit.base.command.base import CommandTemplate, CommandOptions
 from expkit.base.logger import get_logger
 from expkit.framework.database import register_command
 
@@ -10,16 +10,17 @@ LOGGER = get_logger(__name__)
 PRINT = get_logger(__name__, True)
 
 
+# todo migrate to argparse system
 @register_command
 class HelpCommand(CommandTemplate):
     def __init__(self):
-        super().__init__(".help.cmd", CommandArgumentCount(0, "*"), textwrap.dedent('''\
+        super().__init__(".help.cmd", textwrap.dedent('''\
             Print help about a command.
             '''))
 
         self._root_cmd: Optional[CommandTemplate] = None
 
-    def _execute_command(self, options: CommandOptions, *args) -> bool:
+    def execute(self, options: CommandOptions, *args) -> bool:
         assert self._root_cmd is not None
 
         PRINT.info(f"\nPrinting help about command '{' '.join(args)}'\n")

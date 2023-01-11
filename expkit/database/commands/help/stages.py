@@ -1,7 +1,7 @@
 import textwrap
 from typing import Optional, get_type_hints
 
-from expkit.base.command.base import CommandTemplate, CommandOptions, CommandArgumentCount
+from expkit.base.command.base import CommandTemplate, CommandOptions
 from expkit.base.logger import get_logger
 from expkit.framework.database import register_command, StageDatabase
 
@@ -9,10 +9,11 @@ LOGGER = get_logger(__name__)
 PRINT = get_logger(__name__, True)
 
 
+# todo migrate to argparse system
 @register_command
 class StageInfoCommand(CommandTemplate):
     def __init__(self):
-        super().__init__(".help.stages", CommandArgumentCount(0, "*"), textwrap.dedent('''\
+        super().__init__(".help.stages", textwrap.dedent('''\
             Print information about stages.
         '''), textwrap.dedent('''\
             Print information about a specific stage. If no name is given, a list
@@ -21,7 +22,7 @@ class StageInfoCommand(CommandTemplate):
             This includes a description and a list of available config parameters.
             '''))
 
-    def _execute_command(self, options: CommandOptions, *args) -> bool:
+    def execute(self, options: CommandOptions, *args) -> bool:
         db = StageDatabase.get_instance()
 
         if len(args) == 1 and args[0] == "all":

@@ -2,6 +2,7 @@ import argparse
 import json
 import logging
 import os
+import sys
 import tempfile
 import textwrap
 from json import JSONDecodeError
@@ -19,16 +20,14 @@ PRINT = None
 def main():
     global LOGGER, PRINT
 
-    parser = argparse.ArgumentParser(description="Exploit/Payload building framework", formatter_class=argparse.RawTextHelpFormatter)
+    parser = argparse.ArgumentParser(description="Exploit/Payload building framework", formatter_class=argparse.RawTextHelpFormatter, add_help=False)
 
-    parser.add_argument("-v", "--verbose", action="store_true", help="verbose output", default=False)
-    parser.add_argument("-d", "--debug", action="store_true", help="debug output", default=False)
-    parser.add_argument("-f", "--file", help="configuration file to load", type=str, default=None)
-    parser.add_argument("-t", "--targets", help="artifact to build, several artifacts can be separated by comma", type=str, default=None)
-    parser.add_argument("-o", "--output", help="temporary build directory", type=str, default=None)
-    parser.add_argument("-w", "--working-dir", help="working directory", type=str, default=None)
-    parser.add_argument("-l", "--log", help="log file", type=str, default=None)
-    parser.add_argument("-n", "--threads", help="number of threads to use", type=int, default=1)
+    parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose output", default=False)
+    parser.add_argument("-d", "--debug", action="store_true", help="Enable debug output", default=False)
+    parser.add_argument("-l", "--log", help="Log file", type=str, default=None)
+    parser.add_argument("-w", "--working-dir", help="Working directory", type=str, default=None)
+    parser.add_argument("-h", "--help", help="Show help dialog", action="store_true", default=False)
+
     parser.add_argument("command", metavar="cmd", type=str, nargs="*",
                         help=textwrap.dedent('''\
                             Command to execute (default: build)
@@ -41,7 +40,7 @@ def main():
                             '''), default=["build"])
 
     # Parse arguments
-    args = parser.parse_args()
+    args = parser.parse_known_args()[0]
 
     # Setup logging
     if args.debug:
@@ -100,72 +99,28 @@ def main():
     build_databases()
     LOGGER.info(f"Found {len(GroupDatabase.get_instance())} groups, {len(StageDatabase.get_instance())} stages, {len(TaskDatabase.get_instance())} tasks, {len(CommandDatabase.get_instance())} commands")
 
-    # Checking arguments
-    LOGGER.debug("Checking arguments")
-
-    config_file = None
-    if args.file is not None:
-        LOGGER.debug(f"Checking if file {args.file} exists")
-        config_file = Path(args.file)
-        if not config_file.exists():
-            LOGGER.warning(f"Config file {config_file.absolute()} does not exist")
-            config_file = None
-        elif not config_file.is_file():
-            LOGGER.warning(f"Config file {config_file.absolute()} is not a file")
-            config_file = None
-        LOGGER.debug("Config file exists")
-
-    artifacts = None
-    if args.targets is not None:
-        artifacts = args.targets.split(",")
-        LOGGER.debug(f"Passed list of artifacts to build {artifacts}")
-
-    output_dir = None
-    if args.output is not None:
-        output_dir = Path(args.output)
-        if not output_dir.is_dir():
-            LOGGER.critical(f"Output directory {output_dir} is not a directory")
-        if not output_dir.exists():
-            output_dir.mkdir()
-            if not output_dir:
-                LOGGER.critical(f"Output directory {output_dir} does not exist")
-        LOGGER.debug("Output directory exists")
-
-    if output_dir is None:
-        output_dir = Path(tempfile.mkdtemp(prefix="expkit_", suffix="_build"))
-        LOGGER.info(f"Using temporary directory as output directory: {output_dir.absolute()}")
-
-    if config_file is None:
-        LOGGER.info("No config file specified. Using default file_path")
-        config_file = Path("config.json")
-
-        if not config_file.exists():
-            LOGGER.warning(f"Config file {config_file} does not exist")
-            config_file = None
-        elif not config_file.is_file():
-            LOGGER.warning(f"Config file {config_file} is not a file")
-            config_file = None
-
-    config = None
-    if config_file is not None:
-        try:
-            with open(config_file, "r") as f:
-                config = json.load(f)
-        except JSONDecodeError as e:
-            LOGGER.critical(f"Error parsing config file {config_file}: {e}")
-        except Exception as e:
-            LOGGER.critical(f"Failed to load config file {config_file}")
-            raise e
+    target_cmd = []
+    for arg in sys.argv[1:]:
+        if arg.startswith("-"):
+            break
+        target_cmd.append(arg)
 
     # Executing command
     LOGGER.debug("Starting main")
-    m = CommandDatabase.get_instance().get_command(*args.command)
+    m = CommandDatabase.get_instance().get_command(*sys.argv[1:])
     if m is None:
-        LOGGER.critical(f"Unknown command '{' '.join(args.command)}'. Use 'help' or '--help' to get a list of available commands")
+        LOGGER.critical(f"Unknown command '{' '.join(target_cmd)}'. Use 'help' or '--help' to get a list of available commands")
     else:
         cmd, cmd_args = m
+        if cmd.name == '':
+            if args.help:
+                PRINT.critical(f"\n{parser.format_help()}\n")
+            else:
+                LOGGER.critical(f"Unknown command '{' '.join(target_cmd)}'. Use 'help' or '--help' to get a list of available commands")
+
         LOGGER.info(f"Executing command {cmd.name[1:]}")
-        if not cmd.execute(CommandOptions(config, artifacts, output_dir, args.threads, args.verbose or args.debug), *cmd_args):
+        options, parser = cmd.parse_arguments(*cmd_args)
+        if not cmd.execute(options):
             PRINT.info(f"\n{parser.format_help()}\n")
 
     LOGGER.debug("Exiting...")

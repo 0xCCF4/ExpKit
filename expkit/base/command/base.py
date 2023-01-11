@@ -18,7 +18,7 @@ class CommandOptions:
         self.config_file: Optional[Path] = None
         self.output_directory: Optional[Path] = None
         self.working_directory: Optional[Path] = None
-        self.temporary_directory: Optional[Path] = None
+        self.temp_directory: Optional[Path] = None
         self.log_verbose: bool = False
         self.log_debug: bool = False
         self.log_file: Optional[Path] = None
@@ -34,20 +34,15 @@ class CommandTemplate:
         self.children = []
         self.parent: Optional[CommandTemplate] = None
 
-    def _execute_command(self, options: CommandOptions, *args) -> bool:
-        """Execute the command. Return False to show help."""
-        raise NotImplementedError("Not implemented")
-
     def get_child_command(self, name: str) -> Optional["CommandTemplate"]:
         for child in self.children:
             if child.get_real_name() == name:
                 return child
         return None
 
-    def execute(self, options: CommandOptions, *args) -> bool:
-        error_on_fail(check_type(list(args), List[str]), "Invalid arguments")
-
-        return self._execute_command(options, *args)
+    def execute(self, options: CommandOptions) -> bool:
+        """Execute the command. Return False to show help."""
+        raise NotImplementedError("Not implemented")
 
     def add_command(self, child: "CommandTemplate"):
         if len(child.name) <= 1:
@@ -119,32 +114,24 @@ class CommandTemplate:
 
     def create_argparse(self) -> argparse.ArgumentParser:
         parser = argparse.ArgumentParser(description=self.get_pretty_description())
+        base_group = parser.add_argument_group("Standard options")
 
-        parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose output", default=False)
-        parser.add_argument("-d", "--debug", action="store_true", help="Enable debug output", default=False)
-        parser.add_argument("-c", "--config", help="Specify configuration file to load", type=str, default=None)
-        parser.add_argument("-o", "--output", help="Build output directory", type=str, default=None)
-        parser.add_argument("-t", "--temp-dir", help="Temporary build directory", type=str, default=None)
-        parser.add_argument("-w", "--working-dir", help="Working directory", type=str, default=None)
-        parser.add_argument("-l", "--log", help="Log file", type=str, default=None)
+        base_group.add_argument("-v", "--verbose", action="store_true", help="Enable verbose output", default=False)
+        base_group.add_argument("-d", "--debug", action="store_true", help="Enable debug output", default=False)
+        base_group.add_argument("-c", "--config", help="Specify configuration file to load", type=str, default=None)
+        base_group.add_argument("-o", "--output", help="Build output directory", type=str, default=None)
+        base_group.add_argument("-t", "--temp-dir", help="Temporary build directory", type=str, default=None)
+        base_group.add_argument("-w", "--working-dir", help="Working directory", type=str, default=None)
+        base_group.add_argument("-l", "--log", help="Log file", type=str, default=None)
 
         return parser
 
-    def parse_arguments(self, *args: str) -> CommandOptions:
+    def parse_arguments(self, *args: str) -> Tuple[CommandOptions, argparse.ArgumentParser]:
         parser = self.create_argparse()
+
         args = parser.parse_args(args)
 
         options = CommandOptions()
-
-        # Change working directory
-
-        if args.working_dir is not None:
-            options.working_directory = Path(args.working_dir)
-            if not options.working_directory.exists():
-                raise ValueError(f"Working directory {options.working_directory} does not exist")
-            if not options.working_directory.is_dir():
-                raise ValueError(f"Working directory {options.working_directory} is not a directory")
-            os.chdir(options.working_directory)
 
         # Parse arguments
 
@@ -167,6 +154,9 @@ class CommandTemplate:
         if args.temp_dir is not None:
             options.temp_directory = Path(args.temp_dir)
 
+        if args.working_dir is not None:
+            options.working_directory = Path(args.working_dir)
+
         # Validate arguments
 
         if options.config_file is not None:
@@ -175,11 +165,25 @@ class CommandTemplate:
             if not options.config_file.is_file():
                 raise ValueError(f"Configuration file {options.config_file} is not a file")
 
+        if options.working_directory is not None:
+            if not options.working_directory.exists():
+                raise ValueError(f"Working directory {options.working_directory} does not exist")
+            if not options.working_directory.is_dir():
+                raise ValueError(f"Working directory {options.working_directory} is not a directory")
+
         if options.output_directory is not None:
             # todo
             pass
 
+        if options.temp_directory is not None:
+            # todo
+            pass
 
+        if options.temp_directory is None:
+            # todo Path(tempfile.mkdtemp(prefix="expkit_", suffix="_build"))
+            pass
+
+        return options, parser
 
 
     # For bisect.insort_left

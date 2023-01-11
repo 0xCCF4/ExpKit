@@ -7,7 +7,7 @@ from socketserver import ThreadingMixIn
 from urllib.parse import urlparse
 
 from expkit.base.architecture import Platform, Architecture
-from expkit.base.command.base import CommandTemplate, CommandOptions, CommandArgumentCount
+from expkit.base.command.base import CommandTemplate, CommandOptions
 from expkit.base.logger import get_logger
 from expkit.framework.database import register_command
 from ipaddress import ip_address
@@ -17,12 +17,13 @@ from expkit.framework.parser import ConfigParser
 LOGGER = get_logger(__name__)
 
 
+# todo migrate to argparse system
 @register_command
 class ServerCommand(CommandTemplate):
     __instance = None
 
     def __init__(self):
-        super().__init__(".server", CommandArgumentCount(0, 3), textwrap.dedent('''\
+        super().__init__(".server", textwrap.dedent('''\
             Builds and serves an exploit on the fly when a client connects to the local server.
             '''), textwrap.dedent('''\
             Starts a webserver to build the exploit configuration defined in
@@ -52,7 +53,7 @@ class ServerCommand(CommandTemplate):
     def get_pretty_description_header(self) -> str:
         return f"{super().get_pretty_description_header()} [port] [ip] [token]"
 
-    def _execute_command(self, options: CommandOptions, *args) -> bool:
+    def execute(self, options: CommandOptions, *args) -> bool:
         with self.__lock:
             ServerCommand.__instance = self
 

@@ -2,7 +2,7 @@ import math
 import textwrap
 from typing import Optional, get_type_hints
 
-from expkit.base.command.base import CommandTemplate, CommandOptions, CommandArgumentCount
+from expkit.base.command.base import CommandTemplate, CommandOptions
 from expkit.base.logger import get_logger
 from expkit.framework.database import register_command, StageDatabase, GroupDatabase
 
@@ -10,10 +10,11 @@ LOGGER = get_logger(__name__)
 PRINT = get_logger(__name__, True)
 
 
+# todo migrate to argparse system
 @register_command
 class GroupInfoCommand(CommandTemplate):
     def __init__(self):
-        super().__init__(".help.groups", CommandArgumentCount(0, "*"), textwrap.dedent('''\
+        super().__init__(".help.groups", textwrap.dedent('''\
             Print information about groups.
         '''), textwrap.dedent('''\
             Print information about a specific group. If no name is given, a list
@@ -22,7 +23,7 @@ class GroupInfoCommand(CommandTemplate):
             This includes a description and a list of available config parameters.
             '''))
 
-    def _execute_command(self, options: CommandOptions, *args) -> bool:
+    def execute(self, options: CommandOptions, *args) -> bool:
         db = GroupDatabase.get_instance()
 
         if len(args) == 1 and args[0] == "all":

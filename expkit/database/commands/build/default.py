@@ -2,7 +2,7 @@ import textwrap
 import time
 
 from expkit.base.architecture import Platform, Architecture
-from expkit.base.command.base import CommandTemplate, CommandOptions, CommandArgumentCount
+from expkit.base.command.base import CommandTemplate, CommandOptions
 from expkit.base.logger import get_logger
 from expkit.framework.building.build_executor import LocalBuildExecutor
 from expkit.framework.building.build_job import JobState
@@ -13,10 +13,11 @@ from expkit.framework.parser import ConfigParser
 LOGGER = get_logger(__name__)
 
 
+# todo migrate to argparse system
 @register_command
 class ServerCommand(CommandTemplate):
     def __init__(self):
-        super().__init__(".build", CommandArgumentCount(0, 2), textwrap.dedent('''\
+        super().__init__(".build", textwrap.dedent('''\
             Builds an exploit according to the config.json file,
             the specified platform, and architecture.
             '''), textwrap.dedent('''\
@@ -29,7 +30,7 @@ class ServerCommand(CommandTemplate):
     def get_pretty_description_header(self) -> str:
         return f"{super().get_pretty_description_header()} [platform] [architecture]"
 
-    def _execute_command(self, options: CommandOptions, *args) -> bool:
+    def execute(self, options: CommandOptions, *args) -> bool:
         if options.config is None:
             LOGGER.critical("No config file specified.")
 
