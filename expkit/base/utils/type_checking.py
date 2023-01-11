@@ -34,10 +34,10 @@ def check_type(value: any, expected_type: Type, caller_module=None, caller_local
         if origin is None:
             origin = t
         if isinstance(origin, str):
-            origin = ForwardRef(origin, module=caller_module)
+            origin = ForwardRef(origin) #, module=caller_module)
 
         if isinstance(origin, ForwardRef):
-            new_type: Type = origin._evaluate(caller_globals, caller_locals, recursive_guard=frozenset())
+            new_type: Type = origin._evaluate(caller_globals, caller_locals) #, recursive_guard=frozenset())
             if isinstance(new_type, ForwardRef):
                 raise RuntimeError(f"Type {origin} can not be resolved. Maybe circular import?")
             return check_type_recursive(value, new_type, type_err_prefix)

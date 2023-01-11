@@ -52,7 +52,7 @@ setup(name='expkit-framework',
       description="A framework and build automation tool to process exploits/payloads to evade antivirus and endpoint detection response products using reusable building-blocks like encryption or obfuscation.",
       long_description=readme,
       long_description_content_type="text/markdown",
-      python_requires=">=3.10",
+      python_requires=">=3.8",
       entry_points={
             'console_scripts': [
                   'expkit = expkit.framework.main:main',
