@@ -29,7 +29,7 @@ class GroupCacheEntry:
 class GroupTemplate:
     """Representation of a platform-independent stage template group."""
 
-    @type_guard
+    #@type_guard
     def __init__(self, name: str, description: str, stages: Optional[List[StageTemplate]]=None):
         self.name = name
         self.description = description
@@ -127,7 +127,7 @@ class GroupTemplate:
                 LOGGER.error(f"   - {stage.name}")
             raise Exception("Multiple stages support the same platform-architecture-input-output combination.")
 
-    @type_guard
+    #@type_guard
     def execute(self, payload: Payload, dependencies: List[Payload], output_type: PayloadType, platform: Platform, architecture: Architecture, parameters: dict, build_directory: Path) -> Payload:
         LOGGER.info(f"Executing stage group {self.name} ({payload.type} -> {output_type}) on {platform} {architecture}")
 

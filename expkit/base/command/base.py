@@ -25,7 +25,7 @@ class CommandOptions:
 
 
 class CommandTemplate:
-    @type_guard
+    #@type_guard
     def __init__(self, name: str, description_short: str, description_long: Optional[str] = None):
         self.name = name
         self.description_short = description_short

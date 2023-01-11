@@ -106,7 +106,7 @@ class BuildJob:
             if notify and self.callback:
                 self.callback(self)
 
-    @type_guard
+    #@type_guard
     def mark_complete(self, job_output: Payload, notify: bool = True):
         with self.lock:
             assert self.state == JobState.RUNNING

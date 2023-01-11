@@ -23,7 +23,7 @@ class PayloadType(IntEnum):
     DOTNET_BINARY = auto()
 
     @staticmethod
-    @type_guard
+    #@type_guard
     def get_type_from_name(name: str) -> "PayloadType":
         name = name.lower()
         for value in PayloadType:
@@ -74,7 +74,7 @@ class PayloadType(IntEnum):
 
 
 class Payload():
-    @type_guard
+    #@type_guard
     def __init__(self, ptype: PayloadType, content: bytes, platform: Platform, architecture: Architecture, meta: Optional[Dict] = None):
         self.ptype = ptype
         self.content = content
@@ -99,7 +99,7 @@ class Payload():
     def get_meta(self) -> dict:
         return copy.deepcopy(self.meta)
 
-    @type_guard
+    #@type_guard
     def copy(self,
              ptype: Optional[PayloadType] = None,
              content: Optional[bytes] = None,

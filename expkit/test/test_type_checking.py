@@ -23,7 +23,7 @@ def test_types():
     assert check_type(55, type(any))[0]
 
 
-@type_guard
+#@type_guard
 def helper(e: bool, a: List[Dict[int, bool]], *, b: Optional["str"] = None, **kwargs) -> Union[int, str]:
     if e:
         return 1

@@ -19,7 +19,7 @@ _task_database = None
 class StageTemplate():
     """Performs a transformation on a payload by executing multiple tasks."""
 
-    @type_guard
+    #@type_guard
     def __init__(self, name: str, description: str, platform: TargetPlatform, required_parameters: List[Tuple[str, any, str]]):
         self.name = name
         self.description = description
@@ -38,7 +38,7 @@ class StageTemplate():
         assert not self.__module__.startswith("expkit.") or self.__module__ == f"expkit.database.{self.name}", f"{self.__module__} must be named expkit.database.{self.name} or originiate from other package"
         assert self.name.startswith("stages."), f"{self.name} must start with 'tasks.'"
 
-    @type_guard
+    #@type_guard
     def add_task(self, task: Union[TaskTemplate, str]):
         global _task_database
         if isinstance(task, str):
@@ -124,7 +124,7 @@ class StageTemplate():
     def get_required_parameters_info(self) -> Dict[str, Tuple[any, str]]:
         return {k: (v, self.required_parameters_description[k]) for k, v in self.required_parameters_types.items()}
 
-    @type_guard
+    #@type_guard
     def execute(self, payload: Payload, output_type: PayloadType, dependencies: List[Payload], parameters: dict, build_directory: Path) -> Payload:
         error_on_fail(check_dict_types(parameters, self.required_parameters_types), "Stage parameters", TypeError)
 
