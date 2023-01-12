@@ -1,6 +1,10 @@
+import math
+from pathlib import Path
+
 from expkit.base.architecture import Platform
 from expkit.base.logger import get_logger
 from expkit.base.stage.wrong_output_type_exception import SkipStageExecution
+from expkit.base.utils.sanitze import sanitize_file_name
 from expkit.framework.building.build_job import BuildJob, JobState
 
 LOGGER = get_logger(__name__)
@@ -21,6 +25,13 @@ class BuildExecutor:
 
 
 class LocalBuildExecutor(BuildExecutor):
+    def __init__(self, temp_directory: Path):
+        self.temp_directory = temp_directory
+
+    def get_build_directory(self, job: BuildJob):
+        number = f"{job.definition.group_index}".zfill(math.floor(math.log10(len(job.definition.parent.groups)))+1)
+        return self.temp_directory / "local" / sanitize_file_name(job.definition.parent.artifact_name) / f"{number}-{sanitize_file_name(job.group.name)}"
+
     def __local_execute_job(self, job: BuildJob):
         with job.lock:
             assert job.parent is not None, "Job must have a parent job."

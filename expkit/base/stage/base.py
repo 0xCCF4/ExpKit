@@ -113,7 +113,7 @@ class StageTemplate():
             LOGGER.info(f"Creating build directory {context.build_directory}")
             context.build_directory.mkdir(parents=True)
         if len(os.listdir(context.build_directory)) > 0:
-            raise RuntimeError(f"Build directory {context.build_directory} is not empty..")
+            raise RuntimeError(f"Build directory {context.build_directory} is not empty...")
 
     def finish_build(self, context: StageContext) -> Payload:
         raise NotImplementedError("Not implemented")
@@ -135,13 +135,13 @@ class StageTemplate():
             parameters=parameters,
             build_directory=build_directory)
 
-        LOGGER.debug(f"Executing stage {self.name} on payload {context.initial_payload.type}")
+        LOGGER.debug(f"Executing stage {self.name} on payload {context.initial_payload.ptype}")
 
-        if context.initial_payload.type not in self.get_supported_input_payload_types():
-            raise RuntimeError(f"Stage {self.name} does not support input payload type {context.initial_payload.type}")
+        if context.initial_payload.ptype not in self.get_supported_input_payload_types():
+            raise RuntimeError(f"Stage {self.name} does not support input payload type {context.initial_payload.ptype}")
         if not self.is_supporting_dependencies(context):
             raise RuntimeError(f"Stage {self.name} does not support dependencies types {context.dependencies}")
-        if context.output_type not in self.get_output_payload_type(context.initial_payload.type, [d.type for d in context.dependencies]):
+        if context.output_type not in self.get_output_payload_type(context.initial_payload.ptype, [d.ptype for d in context.dependencies]):
             raise RuntimeError(f"Stage {self.name} does not support output payload type {context.output_type}")
 
         self.prepare_build(context)
@@ -151,7 +151,7 @@ class StageTemplate():
 
         out_payload = self.finish_build(context)
 
-        if out_payload.type != context.output_type:
-            raise RuntimeError(f"Stage {self.name} produced payload of type {out_payload.type} instead of {context.output_type}")
+        if out_payload.ptype != context.output_type:
+            raise RuntimeError(f"Stage {self.name} produced payload of type {out_payload.ptype} instead of {context.output_type}")
 
         return out_payload

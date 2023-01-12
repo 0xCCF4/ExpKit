@@ -137,7 +137,7 @@ class BuildCommand(CommandTemplate):
             target_jobs.extend(build_organizer.queue_job(artifact.config, platform, architecture))
 
         # Placeholder
-        executor = LocalBuildExecutor()
+        executor = LocalBuildExecutor(options.temp_directory)
         executor.initialize()
 
         for job in build_organizer.build():

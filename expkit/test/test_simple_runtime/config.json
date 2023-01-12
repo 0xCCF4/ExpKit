@@ -24,7 +24,7 @@
       ]
     },
 
-    "test_42": {
+    "target": {
       "stages": [
         {
           "name": "LOAD_DEPENDENCY",
@@ -54,7 +54,7 @@
       ]
     },
     
-    "test_33": {
+    "alternative": {
       "config": {
         "TPL_VARIABLES": {
           "P_TEST_INT": "33"

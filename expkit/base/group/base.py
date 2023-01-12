@@ -129,22 +129,22 @@ class GroupTemplate:
 
     #@type_guard
     def execute(self, payload: Payload, dependencies: List[Payload], output_type: PayloadType, platform: Platform, architecture: Architecture, parameters: dict, build_directory: Path) -> Payload:
-        LOGGER.info(f"Executing stage group {self.name} ({payload.type} -> {output_type}) on {platform} {architecture}")
+        LOGGER.info(f"Executing stage group {self.name} ({payload.ptype.name} -> {output_type.name}) on {platform.name} {architecture.name}")
 
         assert platform.is_single()
         assert architecture.is_single()
 
-        stage = self.get_stage(platform, architecture, payload.type, [d.type for d in dependencies], output_type)
+        stage = self.get_stage(platform, architecture, payload.ptype, [d.ptype for d in dependencies], output_type)
 
         if stage is None:
             raise Exception("No stage found for platform-architecture-input-output combination.")
 
-        payload = stage.execute(payload, output_type, dependencies, platform, architecture, parameters, build_directory)
+        payload = stage.execute(payload, output_type, dependencies, parameters, build_directory)
 
-        if payload.type != output_type:
+        if payload.ptype != output_type:
             raise Exception("Stage did not produce the expected output type.")
 
-        LOGGER.debug(f"Executed stage group {self.name} ({payload.type} -> {output_type}) on {platform} {architecture}")
+        LOGGER.debug(f"Executed stage group {self.name} ({payload.ptype} -> {output_type}) on {platform} {architecture}")
 
         return payload
 

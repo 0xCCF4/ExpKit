@@ -54,9 +54,7 @@ class LoadProject(StageTemplate):
 
             if not source.exists() or not source.is_dir():
                 raise Exception(f"Source folder {source} does not exist or is not a folder.")
-            if target.exists() or not target.is_dir():
-                raise Exception(f"Target folder {target} already exists or is not a folder.")
-            if task_parameters["source"] == task_parameters["target"]:
+            if source == target:
                 raise Exception("Source and target must be different.")
 
             status = task.execute(task_parameters, context.build_directory, self)
@@ -80,11 +78,11 @@ class LoadProject(StageTemplate):
         assert context.get("output") is not None
 
         return context.initial_payload.copy(
-            type=context.get("target_format"),
+            ptype=context.get("target_format"),
             content=context.get("output"))
 
-    def _skip_execution(self, context, reason: str):
-        raise SkipStageExecution(self, context, reason)
+    def _skip_execution(self, context: StageContext, reason: str):
+        raise SkipStageExecution(self, context=context, message=reason)
 
     def get_supported_input_payload_types(self) -> List[PayloadType]:
         return [PayloadType.EMPTY]

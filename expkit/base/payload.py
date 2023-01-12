@@ -109,7 +109,7 @@ class Payload():
         payload = Payload(self.ptype, self.content, self.platform, self.architecture, copy.deepcopy(self.meta))
 
         if ptype is not None:
-            payload.type = ptype
+            payload.ptype = ptype
         if content is not None:
             payload.content = content
         if meta is not None:
