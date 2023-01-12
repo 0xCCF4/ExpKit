@@ -106,9 +106,9 @@ class Platform(IntFlag):
 
     def supporting_architectures(self) -> List[Architecture]:
         if self == Platform.WINDOWS:
-            return [Architecture.i386, Architecture.AMD64]
+            return [Architecture.AMD64, Architecture.i386]
         elif self == Platform.LINUX:
-            return [Architecture.i386, Architecture.AMD64, Architecture.ARM, Architecture.ARM64]
+            return [Architecture.AMD64, Architecture.i386, Architecture.ARM, Architecture.ARM64]
         elif self == Platform.MACOS:
             return [Architecture.AMD64]
         elif self == Platform.DUMMY:

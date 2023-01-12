@@ -1,9 +1,11 @@
 import argparse
+import hashlib
 import os
+import tempfile
 import textwrap
 import bisect
 from pathlib import Path
-from typing import Optional, List, Union, Tuple
+from typing import Optional, List, Tuple, Type
 
 from expkit.base.logger import get_logger
 from expkit.base.utils.base import error_on_fail
@@ -17,7 +19,6 @@ class CommandOptions:
     def __init__(self):
         self.config_file: Optional[Path] = None
         self.output_directory: Optional[Path] = None
-        self.working_directory: Optional[Path] = None
         self.temp_directory: Optional[Path] = None
         self.log_verbose: bool = False
         self.log_debug: bool = False
@@ -26,10 +27,11 @@ class CommandOptions:
 
 class CommandTemplate:
     #@type_guard
-    def __init__(self, name: str, description_short: str, description_long: Optional[str] = None):
+    def __init__(self, name: str, description_short: str, description_long: Optional[str] = None, options: Type[CommandOptions] = CommandOptions):
         self.name = name
         self.description_short = description_short
         self.description_long = description_long
+        self.options_type = options
 
         self.children = []
         self.parent: Optional[CommandTemplate] = None
@@ -113,25 +115,29 @@ class CommandTemplate:
         return f"{self.get_pretty_description_header()}\n{textwrap.fill(text, max_width, initial_indent=' ' * indent, subsequent_indent=' ' * indent)}"
 
     def create_argparse(self) -> argparse.ArgumentParser:
-        parser = argparse.ArgumentParser(description=self.get_pretty_description())
-        base_group = parser.add_argument_group("Standard options")
+        cols = 80
+        try:
+            cols = os.get_terminal_size().columns
+        except OSError:
+            LOGGER.info("Cannot get terminal size, using default 80 columns")
+        parser = argparse.ArgumentParser(description=f"Exploit/Payload building framework\n\n{self.get_pretty_description(short_description=False, max_width=cols)}", formatter_class=argparse.RawTextHelpFormatter)
+        group = parser.add_argument_group("Standard options")
 
-        base_group.add_argument("-v", "--verbose", action="store_true", help="Enable verbose output", default=False)
-        base_group.add_argument("-d", "--debug", action="store_true", help="Enable debug output", default=False)
-        base_group.add_argument("-c", "--config", help="Specify configuration file to load", type=str, default=None)
-        base_group.add_argument("-o", "--output", help="Build output directory", type=str, default=None)
-        base_group.add_argument("-t", "--temp-dir", help="Temporary build directory", type=str, default=None)
-        base_group.add_argument("-w", "--working-dir", help="Working directory", type=str, default=None)
-        base_group.add_argument("-l", "--log", help="Log file", type=str, default=None)
+        group.add_argument("-v", "--verbose", action="store_true", help="Enable verbose output", default=False)
+        group.add_argument("-d", "--debug", action="store_true", help="Enable debug output", default=False)
+        #group.add_argument("-c", "--config", help="Specify configuration file to load", type=str, default=None)
+        #group.add_argument("-o", "--output", help="Build output directory", type=str, default=None)
+        #group.add_argument("-t", "--temp-dir", help="Temporary build directory", type=str, default=None)
+        group.add_argument("-l", "--log", help="Log file", type=str, default=None)
 
         return parser
 
-    def parse_arguments(self, *args: str) -> Tuple[CommandOptions, argparse.ArgumentParser]:
+    def parse_arguments(self, *args: str) -> Tuple[CommandOptions, argparse.ArgumentParser, argparse.Namespace]:
         parser = self.create_argparse()
 
         args = parser.parse_args(args)
 
-        options = CommandOptions()
+        options = self.options_type()
 
         # Parse arguments
 
@@ -145,19 +151,19 @@ class CommandTemplate:
         if args.log is not None:
             options.log_file = Path(args.log)
 
-        if args.config is not None:
+        if hasattr(args, "config") and args.config is not None:
             options.config_file = Path(args.config)
 
-        if args.output is not None:
+        if hasattr(args, "output") and args.output is not None:
             options.output_directory = Path(args.output)
 
-        if args.temp_dir is not None:
+        if hasattr(args, "temp_dir") and args.temp_dir is not None:
             options.temp_directory = Path(args.temp_dir)
 
-        if args.working_dir is not None:
-            options.working_directory = Path(args.working_dir)
-
         # Validate arguments
+
+        if options.config_file is None:
+            options.config_file = Path("config.json")
 
         if options.config_file is not None:
             if not options.config_file.exists():
@@ -165,25 +171,35 @@ class CommandTemplate:
             if not options.config_file.is_file():
                 raise ValueError(f"Configuration file {options.config_file} is not a file")
 
-        if options.working_directory is not None:
-            if not options.working_directory.exists():
-                raise ValueError(f"Working directory {options.working_directory} does not exist")
-            if not options.working_directory.is_dir():
-                raise ValueError(f"Working directory {options.working_directory} is not a directory")
-
         if options.output_directory is not None:
-            # todo
-            pass
+            if not options.output_directory.exists():
+                options.output_directory.mkdir(parents=True)
+            else:
+                LOGGER.warning(f"Output directory '{options.output_directory.absolute()}' already exists, files may be overwritten")
+
+        if options.output_directory is None:
+            options.output_directory = Path("build")
+            if not options.output_directory.exists():
+                options.output_directory.mkdir(parents=True)
+            else:
+                LOGGER.warning(f"Output directory '{options.output_directory.absolute()}' already exists, files may be overwritten")
 
         if options.temp_directory is not None:
-            # todo
             pass
 
         if options.temp_directory is None:
-            # todo Path(tempfile.mkdtemp(prefix="expkit_", suffix="_build"))
-            pass
+            options.temp_directory = Path(tempfile.gettempdir()) / "expkit-tmp"
 
-        return options, parser
+        if options.config_file is not None:
+            hash_path = hashlib.sha512(str(options.config_file.absolute()).encode("utf-8"))
+            options.temp_directory = options.temp_directory / hash_path.hexdigest()[:24]
+        else:
+            options.temp_directory = options.temp_directory / "default"
+
+        if not options.temp_directory.exists():
+            options.temp_directory.mkdir(parents=True)
+
+        return options, parser, args
 
 
     # For bisect.insort_left

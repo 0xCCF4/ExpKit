@@ -25,7 +25,6 @@ def main():
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose output", default=False)
     parser.add_argument("-d", "--debug", action="store_true", help="Enable debug output", default=False)
     parser.add_argument("-l", "--log", help="Log file", type=str, default=None)
-    parser.add_argument("-w", "--working-dir", help="Working directory", type=str, default=None)
     parser.add_argument("-h", "--help", help="Show help dialog", action="store_true", default=False)
 
     parser.add_argument("command", metavar="cmd", type=str, nargs="*",
@@ -68,9 +67,6 @@ def main():
         LOGGER.info("Printing verbose output")
     if args.debug:
         LOGGER.info("Printing debug output")
-
-    if args.working_dir is not None:
-        os.chdir(args.working_dir)
 
     # Load database
     expkit_dir = Path(__file__).parent.parent
@@ -119,7 +115,7 @@ def main():
                 LOGGER.critical(f"Unknown command '{' '.join(target_cmd)}'. Use 'help' or '--help' to get a list of available commands")
 
         LOGGER.info(f"Executing command {cmd.name[1:]}")
-        options, parser = cmd.parse_arguments(*cmd_args)
+        options, parser, _ = cmd.parse_arguments(*cmd_args)
         if not cmd.execute(options):
             PRINT.info(f"\n{parser.format_help()}\n")
 
