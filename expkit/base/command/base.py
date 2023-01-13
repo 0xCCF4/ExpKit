@@ -5,7 +5,7 @@ import tempfile
 import textwrap
 import bisect
 from pathlib import Path
-from typing import Optional, List, Tuple, Type
+from typing import Optional, List, Tuple, Type, TypeVar
 
 from expkit.base.logger import get_logger
 from expkit.base.utils.base import error_on_fail
@@ -25,9 +25,12 @@ class CommandOptions:
         self.log_file: Optional[Path] = None
 
 
+U = TypeVar('U', bound=CommandOptions)
+
+
 class CommandTemplate:
     #@type_guard
-    def __init__(self, name: str, description_short: str, description_long: Optional[str] = None, options: Type[CommandOptions] = CommandOptions):
+    def __init__(self, name: str, description_short: str, description_long: Optional[str] = None, options: Type[U] = CommandOptions):
         self.name = name
         self.description_short = description_short
         self.description_long = description_long
@@ -132,7 +135,7 @@ class CommandTemplate:
 
         return parser
 
-    def parse_arguments(self, *args: str) -> Tuple[CommandOptions, argparse.ArgumentParser, argparse.Namespace]:
+    def parse_arguments(self, *args: str) -> Tuple[U, argparse.ArgumentParser, argparse.Namespace]:
         parser = self.create_argparse()
 
         args = parser.parse_args(args)
@@ -200,7 +203,6 @@ class CommandTemplate:
             options.temp_directory.mkdir(parents=True)
 
         return options, parser, args
-
 
     # For bisect.insort_left
     def __lt__(self, other):

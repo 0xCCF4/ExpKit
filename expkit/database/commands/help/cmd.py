@@ -10,6 +10,7 @@ from expkit.framework.database import register_command
 LOGGER = get_logger(__name__)
 PRINT = get_logger(__name__, True)
 
+
 class HelpOptions(CommandOptions):
     def __init__(self):
         super().__init__()
@@ -33,14 +34,14 @@ class HelpCommand(CommandTemplate):
 
         return parser
 
-    def parse_arguments(self, *args: str) -> Tuple[CommandOptions, argparse.ArgumentParser, argparse.Namespace]:
+    def parse_arguments(self, *args: str) -> Tuple[HelpOptions, argparse.ArgumentParser, argparse.Namespace]:
         options, parser, args = super().parse_arguments(*args)
 
         options.help_command = args.cmd
 
         return options, parser, args
 
-    def execute(self, options: CommandOptions) -> bool:
+    def execute(self, options: HelpOptions) -> bool:
         assert self._root_cmd is not None
 
         PRINT.info(f"\nPrinting help about command '{' '.join(options.help_command)}'\n")

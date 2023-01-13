@@ -9,7 +9,6 @@ LOGGER = get_logger(__name__)
 PRINT = get_logger(__name__, True)
 
 
-# todo migrate to argparse system
 @register_command
 class HelpCommandDefault(CommandTemplate):
     def __init__(self):
@@ -19,12 +18,9 @@ class HelpCommandDefault(CommandTemplate):
 
         self._help_text = "<help text not built>"
 
-    def execute(self, options: CommandOptions, *args) -> bool:
+    def execute(self, options: CommandOptions) -> bool:
         if len(self._help_text) < 5:
             LOGGER.warning(f"No help text / commands? found.")
-
-        if len(args):
-            LOGGER.error(f"Unknown arguments: {args} for command help. Did you meant to type 'help cmd {' '.join(args)}'?")
 
         PRINT.info(f"\nAvailable commands:\n{self._help_text}\n")
 

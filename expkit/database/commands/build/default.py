@@ -22,6 +22,7 @@ class BuildOptions(CommandOptions):
         super().__init__()     # req  art  plat arch
         self.targets: List[Tuple[str, str, str, str]] = []
 
+
 @register_command
 class BuildCommand(CommandTemplate):
     def __init__(self):
@@ -51,7 +52,7 @@ class BuildCommand(CommandTemplate):
 
         return parser
 
-    def parse_arguments(self, *args: str) -> Tuple[CommandOptions, argparse.ArgumentParser]:
+    def parse_arguments(self, *args: str) -> Tuple[BuildOptions, argparse.ArgumentParser, argparse.Namespace]:
         options, parser, args = super().parse_arguments(*args)
 
         options.targets = []
@@ -69,7 +70,7 @@ class BuildCommand(CommandTemplate):
 
         return options, parser, args
 
-    def execute(self, options: CommandOptions) -> bool:
+    def execute(self, options: BuildOptions) -> bool:
         if options.config_file is None:
             LOGGER.critical("No config file specified.")
 
