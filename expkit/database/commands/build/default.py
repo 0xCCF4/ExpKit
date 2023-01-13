@@ -1,5 +1,6 @@
 import argparse
 import json
+import shutil
 import textwrap
 import time
 from typing import Tuple, List
@@ -136,7 +137,10 @@ class BuildCommand(CommandTemplate):
             LOGGER.debug(f"Scheduling build for {artifact.config.artifact_name} {platform.name} {architecture.name}")
             target_jobs.extend(build_organizer.queue_job(artifact.config, platform, architecture))
 
-        # Placeholder
+        # Placeholder until caching is introduced
+        shutil.rmtree(options.temp_directory)
+        options.temp_directory.mkdir(parents=True)
+
         executor = LocalBuildExecutor(options.temp_directory)
         executor.initialize()
 
@@ -159,7 +163,7 @@ class BuildCommand(CommandTemplate):
         executor.shutdown()
 
         # Debug print
-        for job, info in build_organizer.scheduling_info.items():
-            LOGGER.debug(f"{info.name}\t{job}")
+        #for job, info in build_organizer.scheduling_info.items():
+        #    LOGGER.debug(f"{info.name}\t{job}")
 
         return True
