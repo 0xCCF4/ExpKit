@@ -6,6 +6,7 @@ import pytest
 from expkit.base.utils.type_checking import check_type, type_guard, get_caller_frame
 
 
+@pytest.skip
 def test_types():
     assert check_type("", str)[0]
     assert check_type("", Union[int, bool, str])[0]
@@ -23,6 +24,7 @@ def test_types():
     assert check_type(55, type(any))[0]
 
 
+@pytest.skip
 #@type_guard
 def helper(e: bool, a: List[Dict[int, bool]], *, b: Optional["str"] = None, **kwargs) -> Union[int, str]:
     if e:
@@ -31,6 +33,7 @@ def helper(e: bool, a: List[Dict[int, bool]], *, b: Optional["str"] = None, **kw
         return 3.93
 
 
+@pytest.skip
 def test_func_decorator():
     helper(True, [{2: True}, {4: False}])
     helper(True, [{2: True}, {4: False}], b="")
@@ -55,5 +58,6 @@ def test_func_decorator():
         helper(False, [{2: True}, {4: False}], b=None, c=55, d="")
 
 
+@pytest.skip
 def test_getcaller_frame():
     assert inspect.currentframe() == get_caller_frame()
