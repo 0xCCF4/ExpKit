@@ -8,7 +8,7 @@ stages:
   - test
   - deploy
 
-pytest:
+.pytest: &pytest
   stage: test
   script:
     - pytest -v --junitxml=test_log.xml --cov=expkit --cov-report xml
@@ -22,6 +22,18 @@ pytest:
       coverage_report:
         coverage_format: cobertura
         path: coverage.xml
+
+pytest-3.8:
+  <<: *pytest
+  image: python:3.8-buster
+
+pytest-3.9:
+  <<: *pytest
+  image: python:3.9-buster
+
+pytest-3.10:
+  <<: *pytest
+  image: python:3.10-buster
 
 pages-test:
   stage: test
