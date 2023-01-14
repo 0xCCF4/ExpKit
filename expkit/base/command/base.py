@@ -1,6 +1,7 @@
 import argparse
 import hashlib
 import os
+import sys
 import tempfile
 import textwrap
 import bisect
@@ -123,8 +124,10 @@ class CommandTemplate:
             cols = os.get_terminal_size().columns
         except OSError:
             LOGGER.info("Cannot get terminal size, using default 80 columns")
-        parser = argparse.ArgumentParser(description=f"Exploit/Payload building framework\n\n{self.get_pretty_description(short_description=False, max_width=cols)}", formatter_class=argparse.RawTextHelpFormatter)
+        parser = argparse.ArgumentParser(description=f"Exploit/Payload building framework\n\n{self.get_pretty_description(short_description=False, max_width=cols)}", formatter_class=argparse.RawTextHelpFormatter, add_help=False)
         group = parser.add_argument_group("Standard options")
+
+        group.add_argument("-h", "--help", action="store_true", default=False, help="Show this help message and exit")
 
         group.add_argument("-v", "--verbose", action="store_true", help="Enable verbose output", default=False)
         group.add_argument("-d", "--debug", action="store_true", help="Enable debug output", default=False)
@@ -135,8 +138,9 @@ class CommandTemplate:
 
         return parser
 
-    def parse_arguments(self, *args: str) -> Tuple[U, argparse.ArgumentParser, argparse.Namespace]:
-        parser = self.create_argparse()
+    def parse_arguments(self, *args: str, parser: Optional[argparse.ArgumentParser]) -> Tuple[U, argparse.ArgumentParser, argparse.Namespace]:
+        if parser is None:
+            parser = self.create_argparse()
 
         args = parser.parse_args(args)
 
@@ -162,6 +166,10 @@ class CommandTemplate:
 
         if hasattr(args, "temp_dir") and args.temp_dir is not None:
             options.temp_directory = Path(args.temp_dir)
+
+        if args.help:
+            parser.print_help()
+            sys.exit(0)
 
         # Validate arguments
 
