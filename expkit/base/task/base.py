@@ -16,7 +16,7 @@ class TaskOutput:
 class TaskTemplate():
     """Perform an operation on within a virtual environment."""
 
-    @type_guard
+    #@type_guard
     def __init__(self, name: str, description: str, platform: TargetPlatform, required_parameters: List[Tuple[str, any, str]]):
         self.name = name
         self.description = description

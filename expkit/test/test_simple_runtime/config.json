@@ -24,11 +24,11 @@
       ]
     },
 
-    "test_42": {
+    "target": {
       "stages": [
         {
           "name": "LOAD_DEPENDENCY",
-          "dependencies":  ["base"]
+          "dependencies":  ["base:DUMMY:DUMMY"]
         },
         {
           "name": "TEMPLATE_ENGINE",
@@ -54,7 +54,7 @@
       ]
     },
     
-    "test_33": {
+    "alternative": {
       "config": {
         "TPL_VARIABLES": {
           "P_TEST_INT": "33"

@@ -1,15 +1,15 @@
 import copy
 import threading
-from typing import Optional, List, Union, Dict
+from typing import Optional, List, Union, Dict, Tuple
 import networkx as nx
 
-from expkit.base.architecture import TargetPlatform
+from expkit.base.architecture import TargetPlatform, Platform, Architecture
 from expkit.base.group.base import GroupTemplate
 from expkit.base.logger import get_logger
 from expkit.base.utils.base import error_on_fail
 from expkit.base.utils.data import deepcopy_dict_remove_private
 from expkit.base.utils.type_checking import check_type, type_guard, check_dict_types
-from expkit.framework.database import GroupDatabase, StageDatabase
+from expkit.framework.database import GroupDatabase
 
 LOGGER = get_logger(__name__)
 
@@ -36,14 +36,14 @@ class ParserBlock:
         if not self._config_cache:
             self._config_cache = {}
 
-            if self.get_name() == "root":
+            if self.get_block_type() == "root":
                 self._config_cache = copy.deepcopy(self.config)
-            elif self.get_name() == "artifact" or self.get_name() == "stage":
+            elif self.get_block_type() == "artifact" or self.get_block_type() == "group":
                 self._config_cache = copy.deepcopy(self.parent.get_config()) # use parent config as template
                 for key, value in self.config.items(): # override with current config
                     self._config_cache[key] = copy.deepcopy(value)
             else:
-                raise RuntimeError(f"Unknown block type: {self.get_name()}")
+                raise RuntimeError(f"Unknown block type: {self.get_block_type()}")
 
         return self._config_cache
 
@@ -76,7 +76,7 @@ class RootElement(ParserBlock):
         return "<ROOT>"
 
     @staticmethod
-    @type_guard
+    #@type_guard
     def parse_from_json(data: dict) -> 'RootElement':
         error_on_fail(check_dict_types(data,
             {"artifacts": dict,
@@ -97,7 +97,7 @@ class RootElement(ParserBlock):
 
 
 class ArtifactElement(ParserBlock):
-    @type_guard
+    #@type_guard
     def __init__(self, parent: RootElement):
         super().__init__(parent)
         self.groups: List[GroupElement] = []
@@ -112,7 +112,7 @@ class ArtifactElement(ParserBlock):
         return str(self.artifact_name)
 
     @staticmethod
-    @type_guard
+    #@type_guard
     def parse_from_json(data: dict, artifact_name: str, parent: RootElement) -> "ArtifactElement":
         error_on_fail(check_dict_types(data, {
                 "stages": list,
@@ -127,40 +127,41 @@ class ArtifactElement(ParserBlock):
         block.artifact_name = artifact_name
         block.platforms = ParserBlock.platform_from_json(data.get("platforms", []))
 
-        for i, stage_config in enumerate(data.get("stages", [])):
-            block.groups.append(GroupElement.parse_from_json(stage_config, block, artifact_name, i))
+        for i, group_config in enumerate(data.get("stages", [])):
+            block.groups.append(GroupElement.parse_from_json(group_config, block, artifact_name, i))
 
         return block
 
 
 class GroupElement(ParserBlock):
-    @type_guard
+    #@type_guard
     def __init__(self, parent: ArtifactElement):
         super().__init__(parent)
-        self.stage_name: str = ""
-        self.stage_index: int = -1
-        self.dependencies: Dict[str, Union[ArtifactElement, str]] = {}
+        self.group_name: str = ""
+        self.group_index: int = -1
+        self.raw_dependencies: List[str] = []
+        self.dependencies: List[Tuple[ArtifactElement, Platform, Architecture]] = []
         self.template: Optional[GroupTemplate] = None
 
     def get_block_type(self) -> str:
-        return "stage"
+        return "group"
 
     def get_name(self):
-        return f"{self.parent.get_name()}:{self.stage_index}:{self.stage_name}"
+        return f"{self.parent.get_name()}:{self.group_index}:{self.group_name}"
 
     @staticmethod
-    @type_guard
-    def parse_from_json(data: dict, parent: ArtifactElement, artifact_name: str, stage_index: int) -> "GroupElement":
+    #@type_guard
+    def parse_from_json(data: dict, parent: ArtifactElement, artifact_name: str, group_index: int) -> "GroupElement":
         error_on_fail(check_dict_types(data, {
             "name": str,
             "config": Optional[dict],
             "dependencies": Optional[List[str]],
-        }), f"Missing information or wrong types to parse stage {data.get('name', 'unknown')} for artifact {artifact_name}:{stage_index}:")
+        }), f"Missing information or wrong types to parse group {data.get('name', 'unknown')} for artifact {artifact_name}:{group_index}:")
 
         block = GroupElement(parent=parent)
-        block.stage_name = data.get("name")
-        block.stage_index = stage_index
-        block.dependencies = copy.deepcopy(data.get("dependencies", []))
+        block.group_name = data.get("name")
+        block.group_index = group_index
+        block.raw_dependencies = copy.deepcopy(data.get("dependencies", []))
         block.config = deepcopy_dict_remove_private(data.get("config", {}))
 
         return block
@@ -180,7 +181,7 @@ class ConfigParser:
                 return v
         return None
 
-    @type_guard
+    #@type_guard
     def parse(self, config: dict, targets: Optional[List[str]] = None) -> RootElement:
         LOGGER.debug("Parsing config")
         with self.__lock:
@@ -242,11 +243,14 @@ class ConfigParser:
         for artifact_name, artifact_block in self._root.artifacts.items():
             collected_dependencies: List[str] = []
 
-            for stage_block in artifact_block.groups:
-                for task_dependency in stage_block.dependencies:
+            for group_block in artifact_block.groups:
+                for task_dependency in group_block.raw_dependencies:
                     check_type(task_dependency, str)
                     assert isinstance(task_dependency, str)
-                    collected_dependencies.append(task_dependency)
+                    if ":" in task_dependency:
+                        collected_dependencies.append(task_dependency[:task_dependency.index(":")])
+                    else:
+                        collected_dependencies.append(task_dependency)
 
             linked_dependecies = []
             for dependency in sorted(set(collected_dependencies)):
@@ -260,14 +264,39 @@ class ConfigParser:
 
             artifact_block.dependencies = linked_dependecies
 
-            for stage_block in artifact_block.groups:
+            for group_block in artifact_block.groups:
                 task_dependencies = []
-                for task_dependency in stage_block.dependencies:
+                for i, task_dependency in enumerate(group_block.raw_dependencies):
                     check_type(task_dependency, str)
-                    dependency_block = self.get_artifact(task_dependency)
+
+                    working = task_dependency
+                    dep_name = task_dependency
+                    dep_platform = Platform.DUMMY
+                    dep_architecture = Architecture.DUMMY
+
+                    if ":" in working:
+                        dep_name = working[:working.index(":")]
+                        working = working[working.index(":") + 1:]
+
+                        if ":" in working:
+                            dep_platform = Platform.get_platform_from_name(working[:working.index(":")])
+                            if dep_platform == Platform.UNKNOWN:
+                                raise RuntimeError(f"Unknown platform {working[:working.index(':')]} in dependency {task_dependency}")
+
+                            working = working[working.index(":") + 1:]
+                            dep_architecture = Architecture.get_architecture_from_name(working)
+
+                            if dep_architecture == Architecture.UNKNOWN:
+                                raise RuntimeError(f"Unknown architecture {working} in dependency {task_dependency}")
+                        else:
+                            dep_platform = Platform.get_platform_from_name(working)
+                            if dep_platform == Platform.UNKNOWN:
+                                raise RuntimeError(f"Unknown platform {working} in dependency {task_dependency}")
+
+                    dependency_block = self.get_artifact(dep_name)
                     assert isinstance(dependency_block, ArtifactElement)
-                    task_dependencies.append(dependency_block)
-                stage_block.dependencies = task_dependencies
+                    task_dependencies.append((dependency_block, dep_platform, dep_architecture))
+                group_block.dependencies = task_dependencies
 
         LOGGER.debug("Checking for dependency cycles")
         dependency_cycles = list(nx.simple_cycles(self._dependency_graph))
@@ -304,12 +333,12 @@ class ConfigParser:
 
     def _match_templates(self):
         for artifact_name, artifact_block in self._root.artifacts.items():
-            for stage_block in artifact_block.groups:
-                # Prefer stage groups before individual stages
-                group = GroupDatabase.get_instance().get_group(stage_block.stage_name)
+            for group_block in artifact_block.groups:
+                # Prefer group groups before individual groups
+                group = GroupDatabase.get_instance().get_group(group_block.group_name)
 
                 if group is None:
-                    LOGGER.error(f"Unable to find group {stage_block}")
-                    raise RuntimeError(f"Unable to find group {stage_block}")
+                    LOGGER.error(f"Unable to find group {group_block}")
+                    raise RuntimeError(f"Unable to find group {group_block}")
 
-                stage_block.template = group
+                group_block.template = group

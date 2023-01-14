@@ -1,7 +1,7 @@
 import inspect
 from functools import wraps
 from types import FrameType
-from typing import Type, Tuple, get_origin, get_args, ForwardRef, Union, List, Dict, TypeVar
+from typing import Type, Tuple, get_origin, get_args, ForwardRef, Union, List, Dict, TypeVar, Callable
 
 from expkit.base.utils.base import error_on_fail, StatusError
 
@@ -50,6 +50,45 @@ def check_type(value: any, expected_type: Type, caller_module=None, caller_local
 
         elif origin is any or origin is type(any):
             return True, "", ""
+
+        elif issubclass(origin, Callable):
+            if isinstance(value, Callable):
+                signature = inspect.signature(value)
+                parameters = signature.parameters
+
+                if len(args) == 0:
+                    return True, "", ""
+
+                if len(args) >= 1:
+                    # check parameters
+
+                    if not isinstance(args[0], List):
+                        raise RuntimeError(f"First argument of Callable must be a list of types, but is {args[0]}")
+                    if len(args[0]) != len(parameters):
+                        return False, f"{type_err_prefix}.Callable", f"Expected {len(args[0])} parameters but got {len(parameters)}"
+
+                    for i, (_, parameter) in enumerate(parameters.items()):
+                        expected_sub_type = args[0][i]
+                        annotation = parameter.annotation
+                        if annotation is inspect.Parameter.empty:
+                            continue
+                        success, path, msg = check_type_recursive(annotation, expected_sub_type,
+                                                                  type_err_prefix=f"{type_err_prefix}.Callable[{i}]")
+                        if not success:
+                            return False, path, msg
+
+                if len(args) >= 2:
+                    # check return type
+                    if signature.return_annotation == inspect.Parameter.empty:
+                        return True, "", ""
+                    else:
+                        return check_type_recursive(signature.return_annotation, args[1],
+                                                type_err_prefix=f"{type_err_prefix}.Callable[ret]")
+
+                return False, f"{type_err_prefix}.Callable", "Too many arguments for Callable"
+
+            else:
+                return False, f"{type_err_prefix}.Callable", f"Value is not callable"
 
         elif issubclass(origin, List):
             if not isinstance(value, list):
@@ -109,8 +148,12 @@ def check_type(value: any, expected_type: Type, caller_module=None, caller_local
 
         else:
             if len(args) == 0:
-                if isinstance(value, origin):
-                    return True, "", ""
+                if isinstance(value, type):
+                    if issubclass(value, origin):
+                        return True, "", ""
+                else:
+                    if isinstance(value, origin):
+                        return True, "", ""
 
                 return False, f"{type_err_prefix}.{origin}", f"{type(value)} is not of type {origin}"
 

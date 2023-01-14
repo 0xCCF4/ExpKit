@@ -21,14 +21,17 @@ class ExitOnExceptionHandler(logging.StreamHandler):
 class SynchronizedStreamHandler(logging.StreamHandler):
 
     __current_stream = None
+    __current_handler = None
     __lock = threading.Lock()
 
     def emit(self, record: logging.LogRecord):
         handler = SynchronizedStreamHandler
-        with self.__lock:
-            if self.stream != handler.__current_stream and handler.__current_stream is not None:
+        with handler.__lock:
+            if self.stream != handler.__current_stream and handler.__current_stream is not None and handler.__current_handler is not None:
+                handler.__current_handler.flush()
                 handler.__current_stream.flush()
             handler.__current_stream = self.stream
+            handler.__current_handler = self
             super().emit(record)
 
 
@@ -66,7 +69,7 @@ def init_global_logging(log_file: Optional[Path], file_logging_level:int=logging
     ch_out.setFormatter(formatter_ch_stdout)
     ch_out.addFilter(lambda record: record.levelno <= logging.INFO)
 
-    ch_err = SynchronizedStreamHandler(stream=sys.stderr)
+    ch_err = SynchronizedStreamHandler(stream=sys.stdout)
     ch_err.setLevel(logging.WARNING)
     ch_err.setFormatter(formatter_ch_stderr)
 

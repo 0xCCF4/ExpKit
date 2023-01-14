@@ -50,4 +50,4 @@ class CopyTemplateFolderTask(AbstractForeachFileTask):
             LOGGER.error(f"Failed to copy file {file} to {target_file}", e)
             return TaskOutput(success=False)
 
-
+        return TaskOutput(success=True)

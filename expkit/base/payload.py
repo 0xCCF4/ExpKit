@@ -3,9 +3,9 @@ import json
 from base64 import b64encode
 from enum import IntEnum, auto
 from json import JSONEncoder
-from typing import Optional
+from typing import Optional, Dict
 
-from expkit.base.architecture import TargetPlatform
+from expkit.base.architecture import Platform, Architecture
 from expkit.base.utils.type_checking import type_guard
 
 
@@ -23,7 +23,7 @@ class PayloadType(IntEnum):
     DOTNET_BINARY = auto()
 
     @staticmethod
-    @type_guard
+    #@type_guard
     def get_type_from_name(name: str) -> "PayloadType":
         name = name.lower()
         for value in PayloadType:
@@ -74,15 +74,18 @@ class PayloadType(IntEnum):
 
 
 class Payload():
-    @type_guard
-    def __init__(self, type: PayloadType, content: bytes, meta: dict = None):
-        self.type = type
+    #@type_guard
+    def __init__(self, ptype: PayloadType, content: bytes, platform: Platform, architecture: Architecture, meta: Optional[Dict] = None):
+        self.ptype = ptype
         self.content = content
+        self.platform = platform
+        self.architecture = architecture
         self.meta = meta if meta is not None else {}
-
+        assert self.platform.is_single()
+        assert self.architecture.is_single()
 
     def __str__(self) -> str:
-        return self.type.name
+        return self.ptype.name
 
     def get_content(self) -> bytes:
         return self.content
@@ -96,16 +99,25 @@ class Payload():
     def get_meta(self) -> dict:
         return copy.deepcopy(self.meta)
 
-    @type_guard
-    def copy(self, type: Optional[PayloadType] = None, content: Optional[bytes] = None, meta: Optional[dict] = None):
-        payload = Payload(self.type, self.content, copy.deepcopy(self.meta))
+    #@type_guard
+    def copy(self,
+             ptype: Optional[PayloadType] = None,
+             content: Optional[bytes] = None,
+             meta: Optional[dict] = None,
+             platform: Optional[Platform] = None,
+             architecture: Optional[Architecture] = None) -> "Payload":
+        payload = Payload(self.ptype, self.content, self.platform, self.architecture, copy.deepcopy(self.meta))
 
-        if type is not None:
-            payload.type = type
+        if ptype is not None:
+            payload.ptype = ptype
         if content is not None:
             payload.content = content
         if meta is not None:
             payload.meta = meta
+        if platform is not None:
+            payload.platform = platform
+        if architecture is not None:
+            payload.architecture = architecture
 
         return payload
 

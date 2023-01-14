@@ -1,6 +1,6 @@
 import textwrap
 
-from expkit.base.command.base import CommandTemplate, CommandOptions, CommandArgumentCount
+from expkit.base.command.base import CommandTemplate, CommandOptions
 from expkit.base.logger import get_logger
 from expkit.framework.database import register_command
 
@@ -12,18 +12,15 @@ PRINT = get_logger(__name__, True)
 @register_command
 class HelpCommandDefault(CommandTemplate):
     def __init__(self):
-        super().__init__(".help", CommandArgumentCount(0, "*"), textwrap.dedent('''\
+        super().__init__(".help", textwrap.dedent('''\
             Print help.
             '''))
 
         self._help_text = "<help text not built>"
 
-    def _execute_command(self, options: CommandOptions, *args) -> bool:
+    def execute(self, options: CommandOptions) -> bool:
         if len(self._help_text) < 5:
             LOGGER.warning(f"No help text / commands? found.")
-
-        if len(args):
-            LOGGER.error(f"Unknown arguments: {args} for command help. Did you meant to type 'help cmd {' '.join(args)}'?")
 
         PRINT.info(f"\nAvailable commands:\n{self._help_text}\n")
 
