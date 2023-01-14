@@ -24,7 +24,7 @@ class JobSchedulingInfo(IntEnum):
 
 
 class BuildOrganizer:
-    @type_guard
+    #@type_guard
     def __init__(self, config: RootElement):
         self.config = config
         self.__initialized = False

@@ -9,7 +9,7 @@ from expkit.framework.parser import RootElement, ArtifactElement
 
 
 class ArtifactBuildOrganizer:
-    @type_guard
+    #@type_guard
     def __init__(self, config: ArtifactElement, build_organizer: "BuildOrganizer"):
         self.config = config
         self.__initialized = False

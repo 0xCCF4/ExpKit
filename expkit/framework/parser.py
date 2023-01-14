@@ -76,7 +76,7 @@ class RootElement(ParserBlock):
         return "<ROOT>"
 
     @staticmethod
-    @type_guard
+    #@type_guard
     def parse_from_json(data: dict) -> 'RootElement':
         error_on_fail(check_dict_types(data,
             {"artifacts": dict,
@@ -97,7 +97,7 @@ class RootElement(ParserBlock):
 
 
 class ArtifactElement(ParserBlock):
-    @type_guard
+    #@type_guard
     def __init__(self, parent: RootElement):
         super().__init__(parent)
         self.groups: List[GroupElement] = []
@@ -112,7 +112,7 @@ class ArtifactElement(ParserBlock):
         return str(self.artifact_name)
 
     @staticmethod
-    @type_guard
+    #@type_guard
     def parse_from_json(data: dict, artifact_name: str, parent: RootElement) -> "ArtifactElement":
         error_on_fail(check_dict_types(data, {
                 "stages": list,
@@ -134,7 +134,7 @@ class ArtifactElement(ParserBlock):
 
 
 class GroupElement(ParserBlock):
-    @type_guard
+    #@type_guard
     def __init__(self, parent: ArtifactElement):
         super().__init__(parent)
         self.group_name: str = ""
@@ -150,7 +150,7 @@ class GroupElement(ParserBlock):
         return f"{self.parent.get_name()}:{self.group_index}:{self.group_name}"
 
     @staticmethod
-    @type_guard
+    #@type_guard
     def parse_from_json(data: dict, parent: ArtifactElement, artifact_name: str, group_index: int) -> "GroupElement":
         error_on_fail(check_dict_types(data, {
             "name": str,
@@ -181,7 +181,7 @@ class ConfigParser:
                 return v
         return None
 
-    @type_guard
+    #@type_guard
     def parse(self, config: dict, targets: Optional[List[str]] = None) -> RootElement:
         LOGGER.debug("Parsing config")
         with self.__lock:

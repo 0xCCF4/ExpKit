@@ -1,7 +1,8 @@
+import argparse
 import textwrap
-from typing import Optional, get_type_hints
+from typing import Optional, get_type_hints, List, Tuple
 
-from expkit.base.command.base import CommandTemplate, CommandOptions, CommandArgumentCount
+from expkit.base.command.base import CommandTemplate, CommandOptions
 from expkit.base.logger import get_logger
 from expkit.framework.database import register_command, StageDatabase
 
@@ -9,31 +10,52 @@ LOGGER = get_logger(__name__)
 PRINT = get_logger(__name__, True)
 
 
+class HelpOptions(CommandOptions):
+    def __init__(self):
+        super().__init__()
+        self.help_stages: List[str] = []
+
+
 @register_command
 class StageInfoCommand(CommandTemplate):
     def __init__(self):
-        super().__init__(".help.stages", CommandArgumentCount(0, "*"), textwrap.dedent('''\
+        super().__init__(".help.stages", textwrap.dedent('''\
             Print information about stages.
         '''), textwrap.dedent('''\
             Print information about a specific stage. If no name is given, a list
             of all stages, is printed.
             When a name is given, the help for the specific stage is printed.
             This includes a description and a list of available config parameters.
-            '''))
+            '''), options=HelpOptions)
 
-    def _execute_command(self, options: CommandOptions, *args) -> bool:
+    def create_argparse(self) -> argparse.ArgumentParser:
+        parser = super().create_argparse()
+
+        parser.add_argument("name", nargs="*", default=None, help="Name of the stage (or 'all') to print information about.")
+
+        return parser
+
+    def parse_arguments(self, *args: str) -> Tuple[HelpOptions, argparse.ArgumentParser, argparse.Namespace]:
+        options, parser, namespace = super().parse_arguments(*args)
+
+        options.help_stages = namespace.name
+
+        if "all" in options.help_stages:
+            db = StageDatabase.get_instance()
+            options.help_stages = tuple(sorted([s.name for s in db.stages.values()]))
+
+        return options, parser, namespace
+
+    def execute(self, options: HelpOptions) -> bool:
         db = StageDatabase.get_instance()
 
-        if len(args) == 1 and args[0] == "all":
-            args = tuple(sorted([s.name for s in db.stages.values()]))
-
-        if len(args) == 0:
+        if len(options.help_stages) == 0:
             PRINT.info(f"Printing list of all stages")
             for stage in sorted([stage.name for stage in db.stages.values()]):
                 PRINT.info(f" - {stage}")
             PRINT.info("")
         else:
-            for name in args:
+            for name in options.help_stages:
                 stage = db.get_stage(name)
                 if stage is None:
                     LOGGER.error(f"Stage not found: {name}")
@@ -57,7 +79,7 @@ class StageInfoCommand(CommandTemplate):
                     for dependencies in dependency_types:
                         PRINT.info(f"    - {dependencies}")
 
-                    if options.verbose:
+                    if options.log_verbose:
                         PRINT.info(f"  Supported payload types:")
                         for input_type in stage.get_supported_input_payload_types():
                             for dependencies in dependency_types:

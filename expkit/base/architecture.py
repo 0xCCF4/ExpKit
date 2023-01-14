@@ -2,6 +2,8 @@ from enum import IntFlag
 import sys, platform
 from typing import List, Optional, Union, Dict, Tuple
 
+from expkit.base.utils.data import bit_count
+
 
 class Architecture(IntFlag):
     UNKNOWN = 0
@@ -43,10 +45,10 @@ class Architecture(IntFlag):
         return Architecture.UNKNOWN
 
     def is_single(self) -> bool:
-        return self.value.bit_count() == 1
+        return bit_count(self.value) == 1
 
     def is_union(self) -> bool:
-        return self.value.bit_count() > 1
+        return bit_count(self.value) > 1
 
     def __contains__(self, item: Union["Architecture", any]):
         if isinstance(item, Architecture):
@@ -104,9 +106,9 @@ class Platform(IntFlag):
 
     def supporting_architectures(self) -> List[Architecture]:
         if self == Platform.WINDOWS:
-            return [Architecture.i386, Architecture.AMD64]
+            return [Architecture.AMD64, Architecture.i386]
         elif self == Platform.LINUX:
-            return [Architecture.i386, Architecture.AMD64, Architecture.ARM, Architecture.ARM64]
+            return [Architecture.AMD64, Architecture.i386, Architecture.ARM, Architecture.ARM64]
         elif self == Platform.MACOS:
             return [Architecture.AMD64]
         elif self == Platform.DUMMY:
@@ -153,10 +155,10 @@ class Platform(IntFlag):
         return last_value
 
     def is_single(self) -> bool:
-        return self.value.bit_count() == 1
+        return bit_count(self.value) == 1
 
     def is_union(self) -> bool:
-        return self.value.bit_count() > 1
+        return bit_count(self.value) > 1
 
     def get_platforms(self) -> List["Platform"]:
         return [value for value in Platform if value in self and value.is_single()]

@@ -11,6 +11,9 @@ def recursive_foreach_file(root: Path, func_foreach_file: Callable[[Path], None]
     while len(files) > 0:
         file = files.pop()
 
+        if not file.exists():
+            raise FileNotFoundError(f"File {file} does not exist")
+
         if file.is_symlink() and not follow_symlinks:
             continue
 

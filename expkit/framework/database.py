@@ -3,7 +3,7 @@ import threading
 from pathlib import Path
 from typing import Dict, Optional, Type, TypeVar, Generic, List, Callable, Union, Tuple
 
-from expkit.base.command.base import CommandTemplate, CommandArgumentCount
+from expkit.base.command.base import CommandTemplate
 from expkit.base.group.base import GroupTemplate
 from expkit.base.logger import get_logger
 from importlib import import_module
@@ -328,7 +328,7 @@ class CommandDatabase():
     @staticmethod
     def get_instance() -> CommandTemplate:
         if CommandDatabase.__instance is None:
-            CommandDatabase.__instance = CommandTemplate("", CommandArgumentCount(0,0), "<ROOT>")
+            CommandDatabase.__instance = CommandTemplate("", "<ROOT>")
         return CommandDatabase.__instance
 
 
