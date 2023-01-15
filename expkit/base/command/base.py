@@ -138,9 +138,20 @@ class CommandTemplate:
 
         return parser
 
-    def parse_arguments(self, *args: str, parser: Optional[argparse.ArgumentParser]) -> Tuple[U, argparse.ArgumentParser, argparse.Namespace]:
+    def parse_arguments(self, *args: str, parser: Optional[argparse.ArgumentParser] = None) -> Tuple[U, argparse.ArgumentParser, argparse.Namespace]:
         if parser is None:
             parser = self.create_argparse()
+
+        valid_args = [*args]
+        for option in set(parser._option_string_actions.values()):
+            if option.required:
+                valid_args.append(option.option_strings[0])
+                for _ in range(4):
+                    valid_args.append("x")
+        vargs = parser.parse_known_args(valid_args)[0]
+        if vargs.help:
+            parser.print_help()
+            sys.exit(0)
 
         args = parser.parse_args(args)
 
@@ -167,16 +178,12 @@ class CommandTemplate:
         if hasattr(args, "temp_dir") and args.temp_dir is not None:
             options.temp_directory = Path(args.temp_dir)
 
-        if args.help:
-            parser.print_help()
-            sys.exit(0)
-
         # Validate arguments
 
         if options.config_file is None:
             options.config_file = Path("config.json")
 
-        if options.config_file is not None:
+        if hasattr(args, "config") and options.config_file is not None:
             if not options.config_file.exists():
                 raise ValueError(f"Configuration file {options.config_file} does not exist")
             if not options.config_file.is_file():

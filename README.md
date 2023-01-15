@@ -36,7 +36,7 @@ Project status: __In development - pre-alpha__
 
 ## Installation
 
-ExpKit can be installed locally using `pip` and `python3.10`,
+ExpKit can be installed locally using `pip` and `python3.8`,
 ideally by using a virtual environment:
 
 ```
