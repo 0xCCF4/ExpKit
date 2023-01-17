@@ -9,6 +9,8 @@ from Crypto.Hash import SHA512
 from Crypto.Protocol import KDF
 from Crypto.Util import Padding
 
+from expkit.framework.database import PacketDatabase
+
 
 class SecureConnection:
     block_size = 256  # bytes
@@ -86,4 +88,7 @@ class SecureConnection:
 
     def write_packet(self, packet):
         self.write(json.dumps(packet.serialize()).encode("utf-8"))
+
+    def read_packet(self):
+        return PacketDatabase.get_instance().deserialize(json.loads(self.read().decode("utf-8")))
 

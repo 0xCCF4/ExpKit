@@ -7,10 +7,11 @@ from Crypto.Hash import SHA512
 
 import expkit
 from expkit.base.net.packet import BasePacket
-from expkit.framework.database import StageDatabase, TaskDatabase, GroupDatabase
+from expkit.framework.database import StageDatabase, TaskDatabase, GroupDatabase, register_packet, PacketDatabase
 
 
-class Packet_WorkerHello(BasePacket):
+@register_packet
+class PacketWorkerHello(BasePacket):
     def __init__(self):
         self.version = expkit.__version__
         database_entries = []
@@ -18,6 +19,7 @@ class Packet_WorkerHello(BasePacket):
         database_entries.extend([x for x in StageDatabase.get_instance().stages.values()])
         database_entries.extend([x for x in TaskDatabase.get_instance().tasks.values()])
         database_entries.extend([x for x in GroupDatabase.get_instance().groups.values()])
+        database_entries.extend([x for x in PacketDatabase.get_instance().packets.values()])
 
         self.database = {}
 
@@ -32,6 +34,9 @@ class Packet_WorkerHello(BasePacket):
 
     def get_type(self) -> str:
         return "worker_hello"
+
+    def new_instance(self) -> "BasePacket":
+        return PacketWorkerHello()
 
     def serialize(self) -> dict:
         return {
@@ -55,4 +60,3 @@ class Packet_WorkerHello(BasePacket):
             if v != self.database[k]:
                 raise ValueError(f"Database entry mismatch: {k}")
 
-        return self

@@ -9,7 +9,7 @@ from expkit.base.command.base import CommandTemplate, CommandOptions
 from expkit.base.logger import get_logger
 from expkit.base.net.connection import SecureConnection
 from expkit.framework.database import register_command
-from expkit.framework.worker.packets.hello import Packet_WorkerHello
+from expkit.database.packets.hello import PacketWorkerHello
 
 LOGGER = get_logger(__name__)
 
@@ -106,9 +106,20 @@ class WorkerCommand(CommandTemplate):
         with conn:
             connection = SecureConnection(conn, addr, key=options.token, salt="expkit-worker-connection-salt".encode("utf-8"))
 
-            packet = Packet_WorkerHello().serialize()
-            connection.write_packet(packet)
+            connection.write_packet(PacketWorkerHello())
 
-            while True:
-                # connection.read_packet()
-                break  # todo
+            no_data_for = 0
+            try:
+                while True:
+                    if no_data_for > 60:
+                        raise EOFError("No data received for 60 seconds")
+                    try:
+                        _ = connection.read_packet()
+                        no_data_for = 0
+                    except socket.timeout:
+                        no_data_for += 5
+                        LOGGER.debug(f"No data from {addr} received since {no_data_for} seconds")
+            except EOFError:
+                LOGGER.debug(f"Connection from {addr} closed: timeout")
+            except Exception as e:
+                LOGGER.error(f"Connection from {addr} failed: {e}")

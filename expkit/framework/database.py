@@ -1,3 +1,4 @@
+import json
 import os
 import threading
 from pathlib import Path
@@ -8,6 +9,7 @@ from expkit.base.group.base import GroupTemplate
 from expkit.base.logger import get_logger
 from importlib import import_module
 
+from expkit.base.net.packet import BasePacket
 from expkit.base.stage.base import StageTemplate
 from expkit.base.task.base import TaskTemplate
 from expkit.base.utils.files import recursive_foreach_file
@@ -15,6 +17,8 @@ from expkit.base.utils.files import recursive_foreach_file
 LOGGER = get_logger(__name__)
 
 T = TypeVar("T")
+
+
 class RegisterDecoratorHelper(Generic[T]):
     def __init__(self):
         self._registered: List[T] = []
@@ -41,30 +45,32 @@ class RegisterDecoratorHelper(Generic[T]):
             self._registered = []
             self.finished = False
 
+
 __helper_tasks: RegisterDecoratorHelper[Tuple[Type[TaskTemplate], tuple, dict]] = RegisterDecoratorHelper()
 __helper_stages: RegisterDecoratorHelper[Tuple[Type[StageTemplate], tuple, dict]] = RegisterDecoratorHelper()
 __helper_groups: RegisterDecoratorHelper[Tuple[Type[GroupTemplate], tuple, dict]] = RegisterDecoratorHelper()
 __helper_auto_groups: RegisterDecoratorHelper[Tuple[str, str, Optional[str]]] = RegisterDecoratorHelper()
 __helper_commands: RegisterDecoratorHelper[Tuple[Type[CommandTemplate], tuple, dict]] = RegisterDecoratorHelper()
+__helper_packets: RegisterDecoratorHelper[Tuple[Type[BasePacket], tuple, dict]] = RegisterDecoratorHelper()
 
 
 def _register_obj(type: int, *cargs, **kwargs):
     args = cargs
 
     def decorator(obj: Type[Union[TaskTemplate, StageTemplate, GroupTemplate, CommandTemplate]]):
-        if type==1: # task
+        if type==1:  # task
             assert issubclass(obj, TaskTemplate)
             __helper_tasks.register((obj, args, kwargs))
             setattr(obj, "__auto_register__", (args, kwargs))
-        elif type==2: # stage
+        elif type==2:  # stage
             assert issubclass(obj, StageTemplate)
             __helper_stages.register((obj, args, kwargs))
             setattr(obj, "__auto_register__", (args, kwargs))
-        elif type==3: # group
+        elif type==3:  # group
             assert issubclass(obj, GroupTemplate)
             __helper_groups.register((obj, args, kwargs))
             setattr(obj, "__auto_register__", (args, kwargs))
-        elif type==4: # auto group
+        elif type==4:  # auto group
             assert issubclass(obj, StageTemplate)
             autoconf = getattr(obj, "__auto_register__", None)
 
@@ -86,11 +92,14 @@ def _register_obj(type: int, *cargs, **kwargs):
                 raise ValueError("Auto-grouping requires a string arguments")
 
             __helper_auto_groups.register((group_name, stage_name, description))
-        elif type==5: # command
+        elif type==5:  # command
             assert issubclass(obj, CommandTemplate)
             __helper_commands.register((obj, args, kwargs))
+        elif type==6:  # packet
+            assert issubclass(obj, BasePacket)
+            __helper_packets.register((obj, args, kwargs))
         else:
-            raise TypeError(f"Unable to register {obj} as it is not a StageTaskTemplate, StageTemplate, StageTemplateGroup, CommandTemplate or AutoGroup")
+            raise TypeError(f"Unable to register {obj} as it is not a StageTaskTemplate, StageTemplate, StageTemplateGroup, CommandTemplate, AutoGroup, or BasePacket")
 
         return obj
 
@@ -127,6 +136,10 @@ def register_command(*cargs, **kwargs):
     return _register_obj(5, *cargs, **kwargs)
 
 
+def register_packet(*cargs, **kwargs):
+    return _register_obj(6, *cargs, **kwargs)
+
+
 def auto_discover_databases(directory: Path, module_prefix: str = "expkit."):
     LOGGER.debug(f"Discovering database entries in {directory}")
 
@@ -147,6 +160,7 @@ def auto_discover_databases(directory: Path, module_prefix: str = "expkit."):
 
 
 def build_databases():
+    __helper_packets.finalize(lambda entry: PacketDatabase.get_instance().add_packet(entry[0](*entry[1], **entry[2])))
     __helper_tasks.finalize(lambda entry: TaskDatabase.get_instance().add_task(entry[0](*entry[1], **entry[2])))
     __helper_stages.finalize(lambda entry: StageDatabase.get_instance().add_stage(entry[0](*entry[1], **entry[2])))
     __helper_groups.finalize(lambda entry: GroupDatabase.get_instance().add_group(entry[0](*entry[1], **entry[2])))
@@ -330,6 +344,43 @@ class CommandDatabase():
         if CommandDatabase.__instance is None:
             CommandDatabase.__instance = CommandTemplate("", "<ROOT>")
         return CommandDatabase.__instance
+
+
+class PacketDatabase():
+    def __init__(self):
+        self.packets: Dict[str, BasePacket] = {}
+        LOGGER.debug("Created packet database")
+
+    def add_packet(self, packet: BasePacket) -> BasePacket:
+        if packet.get_type() in self.packets:
+            raise ValueError(f"Packet with id {packet.get_type()} already exists in the database")
+        LOGGER.debug(f" - registered packet {packet.get_type()}")
+        self.packets[packet.get_type()] = packet
+
+        return packet
+
+    def get_packet(self, id: str) -> Optional[BasePacket]:
+        return self.packets.get(id, None)
+
+    def deserialize(self, data: bytes) -> BasePacket:
+        data = json.loads(data)
+        ptype = data.get("_type", None)
+        packet = self.get_packet(ptype)
+        if packet is None:
+            raise ValueError(f"Unknown packet id {ptype}")
+        instance = packet.new_instance()
+        instance.deserialize(data)
+        return instance
+
+    def __len__(self):
+        return len(self.packets)
+
+    __instance: 'PacketDatabase' = None
+    @staticmethod
+    def get_instance() -> 'PacketDatabase':
+        if PacketDatabase.__instance is None:
+            PacketDatabase.__instance = PacketDatabase()
+        return PacketDatabase.__instance
 
 
 def reset_databases():
