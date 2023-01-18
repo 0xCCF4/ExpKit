@@ -1,4 +1,6 @@
 import argparse
+import getpass
+import os
 import socket
 import textwrap
 import threading
@@ -8,7 +10,9 @@ from typing import Tuple
 from expkit.base.command.base import CommandTemplate, CommandOptions
 from expkit.base.logger import get_logger
 from expkit.base.net.connection import SecureConnection
-from expkit.framework.database import register_command
+from expkit.database.packets.keep_alive import PacketWorkerKeepAlive
+from expkit.database.packets.quit import PacketWorkerQuit
+from expkit.framework.database import register_command, PacketDatabase
 from expkit.database.packets.hello import PacketWorkerHello
 
 LOGGER = get_logger(__name__)
@@ -34,7 +38,7 @@ class WorkerCommand(CommandTemplate):
             '''), WorkerOptions)
 
     def get_pretty_description_header(self) -> str:
-        return f"{super().get_pretty_description_header()} --token [TOKEN]"
+        return f"{super().get_pretty_description_header()}"
 
     def create_argparse(self) -> argparse.ArgumentParser:
         parser = super().create_argparse()
@@ -42,7 +46,7 @@ class WorkerCommand(CommandTemplate):
 
         group.add_argument("-p", "--port", type=int, default=3333, help="The port to listen on")
         group.add_argument("-i", "--ip", type=str, default="0.0.0.0", help="The ip address to bind to")
-        group.add_argument("-t", "--token", type=str, default=None, required=True, help="A secret token that is used to connect to the worker")
+        group.add_argument("-t", "--token", type=str, default=None, help="A secret token that is used to connect to the worker")
 
         return parser
 
@@ -61,7 +65,16 @@ class WorkerCommand(CommandTemplate):
             LOGGER.critical(f"Port {args.port} is not a valid port number")
         options.port = args.port
 
-        options.token = args.token
+        if args.token is not None:
+            options.token = args.token
+        else:
+            if int(os.getenv("INSECURE", 0)) == 0:
+                while len(token := getpass.getpass(" - Input secret connection token: ").strip()) < 1:
+                    pass
+                options.token = token
+            else:
+                LOGGER.warning("Running in INSECURE mode! Using non-encrypted plaintext connection. Only use this for debugging!")
+                options.token = None
 
         return options, parser, args
 
@@ -91,9 +104,10 @@ class WorkerCommand(CommandTemplate):
 
                     connections = [thread for thread in connections if thread.is_alive()]
         except KeyboardInterrupt:
-            LOGGER.info("Shutting down worker")
-            for connection in connections:
+            LOGGER.info(f"Shutting down worker... Waiting for {len(connections)} connections to close")
+            for i, connection in enumerate(connections):
                 connection.join()
+                LOGGER.info(f" - {len(connections)-i-1} connections left")
         finally:
             if s is not None:
                 s.close()
@@ -106,7 +120,7 @@ class WorkerCommand(CommandTemplate):
         with conn:
             connection = SecureConnection(conn, addr, key=options.token, salt="expkit-worker-connection-salt".encode("utf-8"))
 
-            connection.write_packet(PacketWorkerHello())
+            connection.write_packet(PacketDatabase.get_instance().get_packet("worker_hello").new_instance())
 
             no_data_for = 0
             try:
@@ -114,8 +128,15 @@ class WorkerCommand(CommandTemplate):
                     if no_data_for > 60:
                         raise EOFError("No data received for 60 seconds")
                     try:
-                        _ = connection.read_packet()
+                        packet = connection.read_packet()
                         no_data_for = 0
+
+                        if isinstance(packet, PacketWorkerKeepAlive):
+                            pass
+                        elif isinstance(packet, PacketWorkerQuit):
+                            LOGGER.debug(f"Worker {addr} requested shutdown: {packet.reason}")
+                            break
+
                     except socket.timeout:
                         no_data_for += 5
                         LOGGER.debug(f"No data from {addr} received since {no_data_for} seconds")
