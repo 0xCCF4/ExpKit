@@ -16,4 +16,4 @@ htmlcov/
 coverage.xml
 .coverage
 build/
-_version.py
+_constants.py

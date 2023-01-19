@@ -22,7 +22,7 @@ class Architecture(IntFlag):
     ALL = BIT32 | BIT64 | DUMMY
 
     @staticmethod
-    def get_architecture() -> "Architecture":
+    def get_system_architecture() -> "Architecture":
         cpu = platform.machine()
         if cpu == "x86_64":
             return Architecture.AMD64

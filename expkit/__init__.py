@@ -1,1 +1,1 @@
-from expkit._version import __version__
+from expkit._constants import __version__

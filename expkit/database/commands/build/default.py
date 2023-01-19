@@ -8,8 +8,7 @@ from typing import Tuple, List
 from expkit.base.architecture import Platform, Architecture
 from expkit.base.command.base import CommandTemplate, CommandOptions
 from expkit.base.logger import get_logger
-from expkit.framework.building.build_executor import LocalBuildExecutor
-from expkit.framework.building.build_job import JobState
+from expkit.framework.building.executors.local import LocalBuildExecutor
 from expkit.framework.building.build_organizer import BuildOrganizer
 from expkit.framework.database import register_command
 from expkit.framework.parser import ConfigParser

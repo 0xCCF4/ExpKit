@@ -5,7 +5,7 @@ import socket
 import textwrap
 import threading
 from ipaddress import IPv4Address, ip_address, IPv6Address
-from typing import Tuple
+from typing import Tuple, Optional
 
 from expkit.base.command.base import CommandTemplate, CommandOptions
 from expkit.base.logger import get_logger
@@ -13,7 +13,7 @@ from expkit.base.net.connection import SecureConnection
 from expkit.database.packets.keep_alive import PacketWorkerKeepAlive
 from expkit.database.packets.quit import PacketWorkerQuit
 from expkit.framework.database import register_command, PacketDatabase
-from expkit.database.packets.hello import PacketWorkerHello
+from expkit.database.packets.hello import  PacketWorkerClientHello, PacketWorkerServerHello
 
 LOGGER = get_logger(__name__)
 
@@ -104,10 +104,10 @@ class WorkerCommand(CommandTemplate):
 
                     connections = [thread for thread in connections if thread.is_alive()]
         except KeyboardInterrupt:
-            LOGGER.info(f"Shutting down worker... Waiting for {len(connections)} connections to close")
+            LOGGER.info(f"Shutting down worker... Waiting for {len(connections)} connection(s) to close")
             for i, connection in enumerate(connections):
                 connection.join()
-                LOGGER.info(f" - {len(connections)-i-1} connections left")
+                LOGGER.info(f" - {len(connections)-i-1} connection(s) left")
         finally:
             if s is not None:
                 s.close()
@@ -120,12 +120,29 @@ class WorkerCommand(CommandTemplate):
         with conn:
             connection = SecureConnection(conn, addr, key=options.token, salt="expkit-worker-connection-salt".encode("utf-8"))
 
-            connection.write_packet(PacketDatabase.get_instance().get_packet("worker_hello").new_instance())
+            challenge: PacketWorkerServerHello = PacketWorkerServerHello().new_instance()
+            connection.write_packet(challenge)
+            challenge_response: Optional[PacketWorkerClientHello] = None
+            for i in range(3):
+                try:
+                    challenge_response = connection.read_packet()
+                except socket.timeout:
+                    continue
+
+            if challenge_response is None:
+                LOGGER.warning(f"Connection from {addr} did not respond to challenge, timeout?")
+                return
+            if challenge_response is None or isinstance(challenge_response, PacketWorkerClientHello):
+                LOGGER.warning(f"Connection from {addr} did not respond to challenge")
+                return
+            if challenge_response.verify_response(challenge.challenge, options.token.encode("utf-8")):
+                LOGGER.warning(f"Connection from {addr} responded with invalid challenge response")
+                return
 
             no_data_for = 0
             try:
                 while True:
-                    if no_data_for > 60:
+                    if no_data_for >= 60:
                         raise EOFError("No data received for 60 seconds")
                     try:
                         packet = connection.read_packet()
@@ -136,6 +153,8 @@ class WorkerCommand(CommandTemplate):
                         elif isinstance(packet, PacketWorkerQuit):
                             LOGGER.debug(f"Worker {addr} requested shutdown: {packet.reason}")
                             break
+                        else:
+                            raise EOFError(f"Unexpected packet: {type(packet)}")
 
                     except socket.timeout:
                         no_data_for += 5
