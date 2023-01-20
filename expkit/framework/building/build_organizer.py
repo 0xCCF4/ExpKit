@@ -1,15 +1,14 @@
 import threading
 from enum import auto, IntEnum
-from typing import Dict, List, Tuple, Iterator, Optional
+from typing import Dict, List, Iterator, Optional
 
 import networkx as nx
 
 from expkit.base.architecture import Platform, Architecture
 from expkit.base.logger import get_logger
-from expkit.base.utils.type_checking import type_guard
 from expkit.framework.building.artifact_build_organizer import ArtifactBuildOrganizer
 from expkit.framework.building.build_job import BuildJob
-from expkit.framework.parser import RootElement, ArtifactElement
+from expkit.framework.parsers.config import RootElement, ArtifactElement
 
 
 LOGGER = get_logger(__name__)
@@ -232,6 +231,14 @@ class BuildOrganizer:
 
                 self.queued_jobs.append(job)
                 self._update_job(job, queue_job=True)
+
+            #color_jobs = target_jobs.copy()
+            #while len(color_jobs) > 0:
+            #    job = color_jobs.pop(0)
+            #    self.graph.nodes[job]["fillcolor"] = "red"
+            #    for p in nx.predecessor(self.graph, job):
+            #        if p not in color_jobs:
+            #            color_jobs.append(p)
 
         return target_jobs
 

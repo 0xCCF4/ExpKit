@@ -3,15 +3,20 @@ import json
 import shutil
 import textwrap
 import time
-from typing import Tuple, List
+from pathlib import Path
+from typing import Tuple, List, Optional
 
 from expkit.base.architecture import Platform, Architecture
 from expkit.base.command.base import CommandTemplate, CommandOptions
 from expkit.base.logger import get_logger
 from expkit.framework.building.executors.local import LocalBuildExecutor
 from expkit.framework.building.build_organizer import BuildOrganizer
+from expkit.framework.building.executors.remote import RemoteBuildExecutor
 from expkit.framework.database import register_command
-from expkit.framework.parser import ConfigParser
+from expkit.framework.parsers.config import ConfigParser
+from networkx.drawing.nx_agraph import write_dot
+
+from expkit.framework.parsers.workers import WorkerConfig
 
 LOGGER = get_logger(__name__)
 
@@ -20,6 +25,8 @@ class BuildOptions(CommandOptions):
     def __init__(self):
         super().__init__()     # req  art  plat arch
         self.targets: List[Tuple[str, str, str, str]] = []
+        self.graph: Optional[Path] = None
+        self.workers: WorkerConfig = None
 
 
 @register_command
@@ -48,6 +55,8 @@ class BuildCommand(CommandTemplate):
         group.add_argument("-o", "--output", help="Build output directory", type=str, default=None)
         group.add_argument("-t", "--temp-dir", help="Temporary build directory", type=str, default=None)
         group.add_argument("--cached", action="store_true", default=False, help="Cache artifact build job outputs between calls")
+        group.add_argument("-w", "--workers", help="Worker connection configuration file", type=str, default=None)
+        group.add_argument("--graph", type=str, default=None, help="Output build graph to a file")
 
         return parser
 
@@ -66,6 +75,18 @@ class BuildCommand(CommandTemplate):
                 options.targets.append((target, parts[0], parts[1], parts[2]))
             else:
                 LOGGER.critical(f"Invalid target '{target}'.")
+
+        if args.graph is not None:
+            options.graph = Path(args.graph)
+            if options.graph.exists():
+                LOGGER.warning(f"Graph file '{options.graph}' already exists, will be overriden.")
+
+        if args.workers is not None:
+            w_config = Path(args.workers)
+            if not w_config.exists():
+                LOGGER.critical(f"Worker configuration file '{options.workers}' does not exist.")
+            options.workers = WorkerConfig(w_config)
+            options.workers.parse()
 
         return options, parser, args
 
@@ -141,26 +162,40 @@ class BuildCommand(CommandTemplate):
         shutil.rmtree(options.temp_directory)
         options.temp_directory.mkdir(parents=True)
 
-        executor = LocalBuildExecutor(options.temp_directory)
-        executor.initialize()
+        if options.graph is not None:
+            LOGGER.info(f"Writing build graph to '{options.graph}'")
 
-        for job in build_organizer.build():
-            LOGGER.debug(f"{len(build_organizer.open_jobs())} jobs are waiting to be built.")
-            if job is None:
-                LOGGER.info(f"Waiting for {len(build_organizer.building_jobs())} jobs to complete...")
-                time.sleep(1)
+            try:
+                write_dot(build_organizer.graph, options.graph)
+            except ImportError as e:
+                LOGGER.warning(f"Failed to write build graph. Graphviz is not installed. {e}")
+
+        else:
+            LOGGER.info("Building targets...")
+
+            if options.workers is not None:
+                executor = RemoteBuildExecutor(options.workers, options.temp_directory)
             else:
-                LOGGER.debug(f"Building {job}...")
-                try:
-                    executor.execute_job(job)
-                except Exception as e:
-                    LOGGER.error(f"Failed to build {job}: {e}")
-                    with job.lock:
-                        if job.state.is_pending():
-                            job.mark_running()
-                        job.mark_error()
+                executor = LocalBuildExecutor(options.temp_directory)
+            executor.initialize()
 
-        executor.shutdown()
+            for job in build_organizer.build():
+                LOGGER.debug(f"{len(build_organizer.open_jobs())} jobs are waiting to be built.")
+                if job is None:
+                    LOGGER.info(f"Waiting for {len(build_organizer.building_jobs())} jobs to complete...")
+                    time.sleep(1)
+                else:
+                    LOGGER.debug(f"Building {job}...")
+                    try:
+                        executor.execute_job(job)
+                    except Exception as e:
+                        LOGGER.error(f"Failed to build {job}: {e}")
+                        with job.lock:
+                            if job.state.is_pending():
+                                job.mark_running()
+                            job.mark_error()
+
+            executor.shutdown()
 
         # Debug print
         #for job, info in build_organizer.scheduling_info.items():

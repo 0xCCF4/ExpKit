@@ -3,9 +3,8 @@ from typing import Dict, List, Tuple, Optional
 
 from expkit.base.architecture import Platform, Architecture, TargetPlatform
 from expkit.base.payload import Payload, PayloadType
-from expkit.base.utils.type_checking import type_guard
 from expkit.framework.building.build_job import BuildJob, JobState
-from expkit.framework.parser import RootElement, ArtifactElement
+from expkit.framework.parsers.config import ArtifactElement
 
 
 class ArtifactBuildOrganizer:

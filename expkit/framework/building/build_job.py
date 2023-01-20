@@ -6,8 +6,7 @@ from typing import Optional, Callable, List, Tuple
 from expkit.base.architecture import Platform, Architecture
 from expkit.base.group.base import GroupTemplate
 from expkit.base.payload import PayloadType, Payload
-from expkit.base.utils.type_checking import type_guard
-from expkit.framework.parser import GroupElement, ArtifactElement
+from expkit.framework.parsers.config import GroupElement, ArtifactElement
 
 
 class JobState(IntEnum):
