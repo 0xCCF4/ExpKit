@@ -1,6 +1,6 @@
 # Runtime dependencies
 networkx==2.8.6
-pycryptodome==3.15.0
+pycryptodome==3.19.1
 
 # Development dependencies start with #!, they are not installed by default
 # To install them, run `pip install -e .[dev]` or `pip install expkit-framework[dev]`
